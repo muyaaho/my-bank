@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pfm-core-service-config
+  namespace: mybank
+data:
+  SPRING_APPLICATION_NAME: "pfm-core-service"
+  SERVER_PORT: "8082"
+
+  # MongoDB Configuration
+  SPRING_DATA_MONGODB_HOST: "mongodb"
+  SPRING_DATA_MONGODB_PORT: "27017"
+  SPRING_DATA_MONGODB_DATABASE: "mybank_pfm"
+
+  # Kafka Consumer Configuration
+  SPRING_KAFKA_CONSUMER_GROUP_ID: "pfm-core-service"
+  SPRING_KAFKA_CONSUMER_AUTO_OFFSET_RESET: "earliest"
+  SPRING_KAFKA_CONSUMER_ENABLE_AUTO_COMMIT: "false"
+
+  # Cache Configuration
+  SPRING_CACHE_TYPE: "redis"
+  SPRING_CACHE_REDIS_TIME_TO_LIVE: "1800000"
+
+  # Logging
+  LOGGING_LEVEL_COM_MYBANK_PFM: "INFO"
+  LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_KAFKA: "INFO"

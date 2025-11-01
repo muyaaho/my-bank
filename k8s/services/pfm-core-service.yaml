@@ -1,57 +1,11 @@
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: pfm-core-service-config
-  namespace: mybank
-data:
-  application.yml: |
-    server:
-      port: 8082
-    spring:
-      application:
-        name: pfm-core-service
-      data:
-        mongodb:
-          host: mongodb
-          port: 27017
-          database: mybank_pfm
-          username: root
-          password: rootpassword
-          authentication-database: admin
-        redis:
-          host: redis
-          port: 6379
-      kafka:
-        bootstrap-servers: kafka:9093
-        consumer:
-          group-id: pfm-core-service
-          auto-offset-reset: earliest
-          enable-auto-commit: false
-      cache:
-        type: redis
-        redis:
-          time-to-live: 1800000
-    eureka:
-      client:
-        service-url:
-          defaultZone: http://service-discovery:8761/eureka/
-        register-with-eureka: true
-        fetch-registry: true
-      instance:
-        prefer-ip-address: true
-    management:
-      endpoints:
-        web:
-          exposure:
-            include: health,info,metrics,prometheus
-
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: pfm-core-service
   namespace: mybank
+  labels:
+    app: pfm-core-service
+    tier: backend
 spec:
   replicas: 2
   selector:
@@ -61,19 +15,39 @@ spec:
     metadata:
       labels:
         app: pfm-core-service
+        tier: backend
     spec:
       containers:
         - name: pfm-core-service
           image: mybank/pfm-core-service:latest
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8082
+              name: http
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: common-config
+            - configMapRef:
+                name: pfm-core-service-config
+            - secretRef:
+                name: common-secret
           env:
-            - name: SPRING_CONFIG_LOCATION
-              value: "file:/config/application.yml"
-          volumeMounts:
-            - name: config
-              mountPath: /config
+            - name: SPRING_DATA_MONGODB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: common-secret
+                  key: MONGODB_USERNAME
+            - name: SPRING_DATA_MONGODB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: common-secret
+                  key: MONGODB_PASSWORD
+            - name: SPRING_DATA_MONGODB_AUTHENTICATION_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: common-secret
+                  key: MONGODB_AUTH_DATABASE
           resources:
             requests:
               memory: "512Mi"
@@ -93,11 +67,6 @@ spec:
               port: 8082
             initialDelaySeconds: 90
             periodSeconds: 5
-      volumes:
-        - name: config
-          configMap:
-            name: pfm-core-service-config
-
 ---
 apiVersion: v1
 kind: Service
@@ -111,3 +80,5 @@ spec:
   ports:
     - port: 8082
       targetPort: 8082
+      protocol: TCP
+      name: http

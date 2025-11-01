@@ -1,49 +1,11 @@
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: payment-service-config
-  namespace: mybank
-data:
-  application.yml: |
-    server:
-      port: 8083
-    spring:
-      application:
-        name: payment-service
-      data:
-        mongodb:
-          host: mongodb
-          port: 27017
-          database: mybank_payment
-          username: root
-          password: rootpassword
-          authentication-database: admin
-        redis:
-          host: redis
-          port: 6379
-      kafka:
-        bootstrap-servers: kafka:9093
-    eureka:
-      client:
-        service-url:
-          defaultZone: http://service-discovery:8761/eureka/
-        register-with-eureka: true
-        fetch-registry: true
-      instance:
-        prefer-ip-address: true
-    management:
-      endpoints:
-        web:
-          exposure:
-            include: health,info,metrics,prometheus
-
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: payment-service
   namespace: mybank
+  labels:
+    app: payment-service
+    tier: backend
 spec:
   replicas: 2
   selector:
@@ -53,19 +15,39 @@ spec:
     metadata:
       labels:
         app: payment-service
+        tier: backend
     spec:
       containers:
         - name: payment-service
           image: mybank/payment-service:latest
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8083
+              name: http
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: common-config
+            - configMapRef:
+                name: payment-service-config
+            - secretRef:
+                name: common-secret
           env:
-            - name: SPRING_CONFIG_LOCATION
-              value: "file:/config/application.yml"
-          volumeMounts:
-            - name: config
-              mountPath: /config
+            - name: SPRING_DATA_MONGODB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: common-secret
+                  key: MONGODB_USERNAME
+            - name: SPRING_DATA_MONGODB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: common-secret
+                  key: MONGODB_PASSWORD
+            - name: SPRING_DATA_MONGODB_AUTHENTICATION_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: common-secret
+                  key: MONGODB_AUTH_DATABASE
           resources:
             requests:
               memory: "512Mi"
@@ -85,11 +67,6 @@ spec:
               port: 8083
             initialDelaySeconds: 90
             periodSeconds: 5
-      volumes:
-        - name: config
-          configMap:
-            name: payment-service-config
-
 ---
 apiVersion: v1
 kind: Service
@@ -103,3 +80,5 @@ spec:
   ports:
     - port: 8083
       targetPort: 8083
+      protocol: TCP
+      name: http

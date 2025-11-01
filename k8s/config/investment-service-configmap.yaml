@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: investment-service-config
+  namespace: mybank
+data:
+  SPRING_APPLICATION_NAME: "investment-service"
+  SERVER_PORT: "8084"
+
+  # MongoDB Configuration
+  SPRING_DATA_MONGODB_HOST: "mongodb"
+  SPRING_DATA_MONGODB_PORT: "27017"
+  SPRING_DATA_MONGODB_DATABASE: "mybank_investment"
+
+  # Kafka Consumer Configuration
+  SPRING_KAFKA_CONSUMER_GROUP_ID: "investment-service"
+  SPRING_KAFKA_CONSUMER_AUTO_OFFSET_RESET: "earliest"
+  SPRING_KAFKA_CONSUMER_ENABLE_AUTO_COMMIT: "false"
+
+  # Logging
+  LOGGING_LEVEL_COM_MYBANK_INVESTMENT: "INFO"
+  LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_KAFKA: "INFO"

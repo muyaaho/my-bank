@@ -1,0 +1,454 @@
+name: Backend Services CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'auth-service/**'
+      - 'pfm-core-service/**'
+      - 'payment-service/**'
+      - 'investment-service/**'
+      - 'api-gateway/**'
+      - 'service-discovery/**'
+      - 'common-lib/**'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - '.github/workflows/backend-services.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'auth-service/**'
+      - 'pfm-core-service/**'
+      - 'payment-service/**'
+      - 'investment-service/**'
+      - 'api-gateway/**'
+      - 'service-discovery/**'
+      - 'common-lib/**'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository_owner }}/mybank
+
+jobs:
+  # Detect which services changed
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      auth: ${{ steps.filter.outputs.auth }}
+      pfm: ${{ steps.filter.outputs.pfm }}
+      payment: ${{ steps.filter.outputs.payment }}
+      investment: ${{ steps.filter.outputs.investment }}
+      gateway: ${{ steps.filter.outputs.gateway }}
+      discovery: ${{ steps.filter.outputs.discovery }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            auth:
+              - 'auth-service/**'
+              - 'common-lib/**'
+            pfm:
+              - 'pfm-core-service/**'
+              - 'common-lib/**'
+            payment:
+              - 'payment-service/**'
+              - 'common-lib/**'
+            investment:
+              - 'investment-service/**'
+              - 'common-lib/**'
+            gateway:
+              - 'api-gateway/**'
+            discovery:
+              - 'service-discovery/**'
+
+  # Build and test all services
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build with Gradle
+        run: ./gradlew clean build --no-daemon --parallel
+
+      - name: Run tests
+        run: ./gradlew test --no-daemon
+
+      - name: Generate test report
+        uses: dorny/test-reporter@v1
+        if: success() || failure()
+        with:
+          name: Backend Tests
+          path: '**/build/test-results/test/*.xml'
+          reporter: java-junit
+
+      - name: Upload test coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: '**/build/reports/jacoco/test/jacocoTestReport.xml'
+          flags: backend
+          name: backend-coverage
+
+  # Build and push Docker images for changed services
+  docker-auth-service:
+    needs: [detect-changes, build-and-test]
+    if: needs.detect-changes.outputs.auth == 'true' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Build JAR
+        run: ./gradlew :auth-service:bootJar --no-daemon
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/auth-service
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./auth-service
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Update image tag in GitOps repo
+        if: github.ref == 'refs/heads/main'
+        run: |
+          IMAGE_TAG=$(echo ${{ github.sha }} | cut -c1-7)
+          sed -i "s|image: mybank/auth-service:.*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/auth-service:main-$IMAGE_TAG|g" k8s/services/auth-service.yaml
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add k8s/services/auth-service.yaml
+          git commit -m "Update auth-service image to main-$IMAGE_TAG [skip ci]" || exit 0
+          git push
+
+  docker-pfm-service:
+    needs: [detect-changes, build-and-test]
+    if: needs.detect-changes.outputs.pfm == 'true' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Build JAR
+        run: ./gradlew :pfm-core-service:bootJar --no-daemon
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/pfm-core-service
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=semver,pattern={{version}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./pfm-core-service
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Update image tag in GitOps repo
+        if: github.ref == 'refs/heads/main'
+        run: |
+          IMAGE_TAG=$(echo ${{ github.sha }} | cut -c1-7)
+          sed -i "s|image: mybank/pfm-core-service:.*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/pfm-core-service:main-$IMAGE_TAG|g" k8s/services/pfm-core-service.yaml
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add k8s/services/pfm-core-service.yaml
+          git commit -m "Update pfm-core-service image to main-$IMAGE_TAG [skip ci]" || exit 0
+          git push
+
+  docker-payment-service:
+    needs: [detect-changes, build-and-test]
+    if: needs.detect-changes.outputs.payment == 'true' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Build JAR
+        run: ./gradlew :payment-service:bootJar --no-daemon
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/payment-service
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./payment-service
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Update image tag in GitOps repo
+        if: github.ref == 'refs/heads/main'
+        run: |
+          IMAGE_TAG=$(echo ${{ github.sha }} | cut -c1-7)
+          sed -i "s|image: mybank/payment-service:.*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/payment-service:main-$IMAGE_TAG|g" k8s/services/payment-service.yaml
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add k8s/services/payment-service.yaml
+          git commit -m "Update payment-service image to main-$IMAGE_TAG [skip ci]" || exit 0
+          git push
+
+  docker-investment-service:
+    needs: [detect-changes, build-and-test]
+    if: needs.detect-changes.outputs.investment == 'true' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Build JAR
+        run: ./gradlew :investment-service:bootJar --no-daemon
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/investment-service
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./investment-service
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Update image tag in GitOps repo
+        if: github.ref == 'refs/heads/main'
+        run: |
+          IMAGE_TAG=$(echo ${{ github.sha }} | cut -c1-7)
+          sed -i "s|image: mybank/investment-service:.*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/investment-service:main-$IMAGE_TAG|g" k8s/services/investment-service.yaml
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add k8s/services/investment-service.yaml
+          git commit -m "Update investment-service image to main-$IMAGE_TAG [skip ci]" || exit 0
+          git push
+
+  docker-api-gateway:
+    needs: [detect-changes, build-and-test]
+    if: needs.detect-changes.outputs.gateway == 'true' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Build JAR
+        run: ./gradlew :api-gateway:bootJar --no-daemon
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/api-gateway
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./api-gateway
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Update image tag in GitOps repo
+        if: github.ref == 'refs/heads/main'
+        run: |
+          IMAGE_TAG=$(echo ${{ github.sha }} | cut -c1-7)
+          sed -i "s|image: mybank/api-gateway:.*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/api-gateway:main-$IMAGE_TAG|g" k8s/services/api-gateway.yaml
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add k8s/services/api-gateway.yaml
+          git commit -m "Update api-gateway image to main-$IMAGE_TAG [skip ci]" || exit 0
+          git push
+
+  docker-service-discovery:
+    needs: [detect-changes, build-and-test]
+    if: needs.detect-changes.outputs.discovery == 'true' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Build JAR
+        run: ./gradlew :service-discovery:bootJar --no-daemon
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/service-discovery
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./service-discovery
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Update image tag in GitOps repo
+        if: github.ref == 'refs/heads/main'
+        run: |
+          IMAGE_TAG=$(echo ${{ github.sha }} | cut -c1-7)
+          sed -i "s|image: mybank/service-discovery:.*|image: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/service-discovery:main-$IMAGE_TAG|g" k8s/services/service-discovery.yaml
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add k8s/services/service-discovery.yaml
+          git commit -m "Update service-discovery image to main-$IMAGE_TAG [skip ci]" || exit 0
+          git push

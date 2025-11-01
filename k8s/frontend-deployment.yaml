@@ -25,11 +25,9 @@ spec:
         - containerPort: 3000
           name: http
           protocol: TCP
-        env:
-        - name: NEXT_PUBLIC_API_URL
-          value: "http://api-gateway:8080"
-        - name: NODE_ENV
-          value: "production"
+        envFrom:
+        - configMapRef:
+            name: frontend-config
         resources:
           requests:
             memory: "256Mi"

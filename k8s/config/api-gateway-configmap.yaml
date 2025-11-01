@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-gateway-config
+  namespace: mybank
+data:
+  SPRING_APPLICATION_NAME: "api-gateway"
+  SERVER_PORT: "8080"
+
+  # Gateway Configuration
+  SPRING_CLOUD_GATEWAY_DISCOVERY_LOCATOR_ENABLED: "true"
+  SPRING_CLOUD_GATEWAY_DISCOVERY_LOCATOR_LOWER_CASE_SERVICE_ID: "true"
+
+  # Logging
+  LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_CLOUD_GATEWAY: "INFO"
+  LOGGING_LEVEL_REACTOR_NETTY: "INFO"
+
+  # Management
+  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,info,metrics,prometheus,gateway"

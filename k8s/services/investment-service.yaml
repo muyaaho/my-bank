@@ -1,50 +1,11 @@
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: investment-service-config
-  namespace: mybank
-data:
-  application.yml: |
-    server:
-      port: 8084
-    spring:
-      application:
-        name: investment-service
-      data:
-        mongodb:
-          host: mongodb
-          port: 27017
-          database: mybank_investment
-          username: root
-          password: rootpassword
-          authentication-database: admin
-      kafka:
-        bootstrap-servers: kafka:9093
-        consumer:
-          group-id: investment-service
-          auto-offset-reset: earliest
-          enable-auto-commit: false
-    eureka:
-      client:
-        service-url:
-          defaultZone: http://service-discovery:8761/eureka/
-        register-with-eureka: true
-        fetch-registry: true
-      instance:
-        prefer-ip-address: true
-    management:
-      endpoints:
-        web:
-          exposure:
-            include: health,info,metrics,prometheus
-
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: investment-service
   namespace: mybank
+  labels:
+    app: investment-service
+    tier: backend
 spec:
   replicas: 2
   selector:
@@ -54,19 +15,39 @@ spec:
     metadata:
       labels:
         app: investment-service
+        tier: backend
     spec:
       containers:
         - name: investment-service
           image: mybank/investment-service:latest
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8084
+              name: http
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: common-config
+            - configMapRef:
+                name: investment-service-config
+            - secretRef:
+                name: common-secret
           env:
-            - name: SPRING_CONFIG_LOCATION
-              value: "file:/config/application.yml"
-          volumeMounts:
-            - name: config
-              mountPath: /config
+            - name: SPRING_DATA_MONGODB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: common-secret
+                  key: MONGODB_USERNAME
+            - name: SPRING_DATA_MONGODB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: common-secret
+                  key: MONGODB_PASSWORD
+            - name: SPRING_DATA_MONGODB_AUTHENTICATION_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: common-secret
+                  key: MONGODB_AUTH_DATABASE
           resources:
             requests:
               memory: "512Mi"
@@ -86,11 +67,6 @@ spec:
               port: 8084
             initialDelaySeconds: 90
             periodSeconds: 5
-      volumes:
-        - name: config
-          configMap:
-            name: investment-service-config
-
 ---
 apiVersion: v1
 kind: Service
@@ -104,3 +80,5 @@ spec:
   ports:
     - port: 8084
       targetPort: 8084
+      protocol: TCP
+      name: http

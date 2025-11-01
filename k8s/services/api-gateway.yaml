@@ -1,72 +1,11 @@
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: api-gateway-config
-  namespace: mybank
-data:
-  application.yml: |
-    server:
-      port: 8080
-    spring:
-      application:
-        name: api-gateway
-      cloud:
-        gateway:
-          discovery:
-            locator:
-              enabled: true
-              lower-case-service-id: true
-          routes:
-            - id: auth-service
-              uri: lb://auth-service
-              predicates:
-                - Path=/api/v1/auth/**
-              filters:
-                - StripPrefix=2
-            - id: pfm-core-service
-              uri: lb://pfm-core-service
-              predicates:
-                - Path=/api/v1/pfm/**
-              filters:
-                - StripPrefix=2
-                - name: JwtAuthenticationFilter
-            - id: investment-service
-              uri: lb://investment-service
-              predicates:
-                - Path=/api/v1/invest/**
-              filters:
-                - StripPrefix=2
-                - name: JwtAuthenticationFilter
-            - id: payment-service
-              uri: lb://payment-service
-              predicates:
-                - Path=/api/v1/payment/**
-              filters:
-                - StripPrefix=2
-                - name: JwtAuthenticationFilter
-    eureka:
-      client:
-        service-url:
-          defaultZone: http://service-discovery:8761/eureka/
-        register-with-eureka: true
-        fetch-registry: true
-      instance:
-        prefer-ip-address: true
-    jwt:
-      secret: mybank360-super-secret-key-for-jwt-token-generation-minimum-256-bits
-    management:
-      endpoints:
-        web:
-          exposure:
-            include: health,info,metrics,prometheus,gateway
-
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: api-gateway
   namespace: mybank
+  labels:
+    app: api-gateway
+    tier: gateway
 spec:
   replicas: 2
   selector:
@@ -76,19 +15,23 @@ spec:
     metadata:
       labels:
         app: api-gateway
+        tier: gateway
     spec:
       containers:
         - name: api-gateway
           image: mybank/api-gateway:latest
-          imagePullPolicy: Never
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
-          env:
-            - name: SPRING_CONFIG_LOCATION
-              value: "file:/config/application.yml"
-          volumeMounts:
-            - name: config
-              mountPath: /config
+              name: http
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: common-config
+            - configMapRef:
+                name: api-gateway-config
+            - secretRef:
+                name: common-secret
           resources:
             requests:
               memory: "512Mi"
@@ -108,11 +51,6 @@ spec:
               port: 8080
             initialDelaySeconds: 90
             periodSeconds: 5
-      volumes:
-        - name: config
-          configMap:
-            name: api-gateway-config
-
 ---
 apiVersion: v1
 kind: Service
@@ -120,10 +58,11 @@ metadata:
   name: api-gateway
   namespace: mybank
 spec:
-  type: NodePort
+  type: ClusterIP
   selector:
     app: api-gateway
   ports:
     - port: 8080
       targetPort: 8080
-      nodePort: 30080
+      protocol: TCP
+      name: http
