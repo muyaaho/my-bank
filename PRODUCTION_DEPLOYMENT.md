@@ -1,8 +1,8 @@
-# MyBank 360 - Production Deployment Guide
+# MyBank - Production Deployment Guide
 
 ## 🎯 Overview
 
-This guide provides complete instructions for deploying MyBank 360 to a production-ready Kubernetes environment with:
+This guide provides complete instructions for deploying MyBank to a production-ready Kubernetes environment with:
 
 - ✅ HTTPS/TLS encryption
 - ✅ Domain-based routing

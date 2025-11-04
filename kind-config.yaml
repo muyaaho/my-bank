@@ -11,6 +11,14 @@ nodes:
           kubeletExtraArgs:
             node-labels: "ingress-ready=true"
     extraPortMappings:
+      # Istio Ingress Gateway - HTTP
+      - containerPort: 32432
+        hostPort: 80
+        protocol: TCP
+      # Istio Ingress Gateway - HTTPS
+      - containerPort: 30170
+        hostPort: 443
+        protocol: TCP
       # API Gateway
       - containerPort: 30080
         hostPort: 8080

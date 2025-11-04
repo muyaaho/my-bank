@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @Slf4j
 @RestController
-@RequestMapping("/pfm")
+@RequestMapping("/api/pfm")
 @RequiredArgsConstructor
 public class PfmController {
 

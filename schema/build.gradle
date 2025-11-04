@@ -1,0 +1,39 @@
+plugins {
+    id 'java-library'
+    id 'com.github.davidmc24.gradle.plugin.avro' version '1.9.1'
+}
+
+dependencies {
+    // Avro
+    api 'org.apache.avro:avro:1.11.3'
+
+    // Kafka Avro Serializer
+    api 'io.confluent:kafka-avro-serializer:7.5.1'
+
+    // Spring Kafka
+    api 'org.springframework.kafka:spring-kafka'
+}
+
+// Avro code generation configuration
+avro {
+    createSetters = true
+    fieldVisibility = "PRIVATE"
+    outputCharacterEncoding = "UTF-8"
+    stringType = "String"
+}
+
+// Disable Spring Boot plugin for library module
+bootJar {
+    enabled = false
+}
+
+jar {
+    enabled = true
+}
+
+// Confluent repository for Kafka Avro Serializer
+repositories {
+    maven {
+        url "https://packages.confluent.io/maven/"
+    }
+}

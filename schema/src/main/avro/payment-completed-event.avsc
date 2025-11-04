@@ -1,0 +1,67 @@
+{
+  "type": "record",
+  "name": "PaymentCompletedEvent",
+  "namespace": "com.mybank.schema.event",
+  "doc": "Event for completed payment. Published by Payment Service, consumed by Investment Service for round-up logic",
+  "fields": [
+    {
+      "name": "eventId",
+      "type": "string",
+      "doc": "Unique event identifier"
+    },
+    {
+      "name": "eventType",
+      "type": "string",
+      "doc": "Type of the event"
+    },
+    {
+      "name": "timestamp",
+      "type": "string",
+      "doc": "Event timestamp in ISO-8601 format"
+    },
+    {
+      "name": "correlationId",
+      "type": ["null", "string"],
+      "default": null,
+      "doc": "Correlation ID for distributed tracing"
+    },
+    {
+      "name": "userId",
+      "type": ["null", "string"],
+      "default": null,
+      "doc": "User ID associated with the event"
+    },
+    {
+      "name": "paymentId",
+      "type": "string",
+      "doc": "Unique payment identifier"
+    },
+    {
+      "name": "accountId",
+      "type": "string",
+      "doc": "Account ID that made the payment"
+    },
+    {
+      "name": "amount",
+      "type": {
+        "type": "bytes",
+        "logicalType": "decimal",
+        "precision": 19,
+        "scale": 4
+      },
+      "doc": "Payment amount"
+    },
+    {
+      "name": "currency",
+      "type": "string",
+      "default": "KRW",
+      "doc": "Currency code (ISO 4217)"
+    },
+    {
+      "name": "merchantName",
+      "type": ["null", "string"],
+      "default": null,
+      "doc": "Merchant name"
+    }
+  ]
+}

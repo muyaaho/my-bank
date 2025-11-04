@@ -5,7 +5,8 @@ USER spring:spring
 
 WORKDIR /app
 
-COPY build/libs/*.jar app.jar
+# Copy the executable JAR (not the plain JAR)
+COPY auth-service/build/libs/auth-service-1.0.0-SNAPSHOT.jar app.jar
 
 EXPOSE 8081
 

@@ -1,0 +1,83 @@
+{
+  "type": "record",
+  "name": "GoalBreachEvent",
+  "namespace": "com.mybank.schema.event",
+  "doc": "Event for goal breach notifications. Published by AI Coach Service, consumed by Notification Service",
+  "fields": [
+    {
+      "name": "eventId",
+      "type": "string",
+      "doc": "Unique event identifier"
+    },
+    {
+      "name": "eventType",
+      "type": "string",
+      "doc": "Type of the event"
+    },
+    {
+      "name": "timestamp",
+      "type": "string",
+      "doc": "Event timestamp in ISO-8601 format"
+    },
+    {
+      "name": "correlationId",
+      "type": ["null", "string"],
+      "default": null,
+      "doc": "Correlation ID for distributed tracing"
+    },
+    {
+      "name": "userId",
+      "type": ["null", "string"],
+      "default": null,
+      "doc": "User ID associated with the event"
+    },
+    {
+      "name": "goalId",
+      "type": "string",
+      "doc": "Unique goal identifier"
+    },
+    {
+      "name": "goalType",
+      "type": {
+        "type": "enum",
+        "name": "GoalType",
+        "symbols": ["SPENDING", "SAVING"]
+      },
+      "doc": "Goal type"
+    },
+    {
+      "name": "targetAmount",
+      "type": {
+        "type": "bytes",
+        "logicalType": "decimal",
+        "precision": 19,
+        "scale": 4
+      },
+      "doc": "Target amount for the goal"
+    },
+    {
+      "name": "currentAmount",
+      "type": {
+        "type": "bytes",
+        "logicalType": "decimal",
+        "precision": 19,
+        "scale": 4
+      },
+      "doc": "Current amount"
+    },
+    {
+      "name": "breachType",
+      "type": {
+        "type": "enum",
+        "name": "BreachType",
+        "symbols": ["EXCEEDED", "FALLING_BEHIND"]
+      },
+      "doc": "Type of breach"
+    },
+    {
+      "name": "message",
+      "type": "string",
+      "doc": "Breach notification message"
+    }
+  ]
+}

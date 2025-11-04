@@ -4,7 +4,7 @@
 
 set -e
 
-echo "🔨 Building MyBank 360 Docker Images..."
+echo "🔨 Building MyBank Docker Images..."
 echo ""
 
 # Colors
@@ -22,16 +22,6 @@ echo -e "${YELLOW}🐳 Building Docker images...${NC}"
 echo ""
 
 # Infrastructure services
-echo "Building service-discovery..."
-docker build -t mybank/service-discovery:latest \
-  -f service-discovery/Dockerfile \
-  service-discovery/
-
-echo "Building config-server..."
-docker build -t mybank/config-server:latest \
-  -f config-server/Dockerfile \
-  config-server/
-
 echo "Building api-gateway..."
 docker build -t mybank/api-gateway:latest \
   -f api-gateway/Dockerfile \
@@ -42,6 +32,11 @@ echo "Building auth-service..."
 docker build -t mybank/auth-service:latest \
   -f auth-service/Dockerfile \
   auth-service/
+
+echo "Building user-service..."
+docker build -t mybank/user-service:latest \
+  -f user-service/Dockerfile \
+  .
 
 echo "Building pfm-core-service..."
 docker build -t mybank/pfm-core-service:latest \

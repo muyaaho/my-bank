@@ -57,13 +57,13 @@ spec:
               cpu: "1000m"
           livenessProbe:
             httpGet:
-              path: /invest/health
+              path: /actuator/health
               port: 8084
             initialDelaySeconds: 120
             periodSeconds: 10
           readinessProbe:
             httpGet:
-              path: /invest/health
+              path: /actuator/health
               port: 8084
             initialDelaySeconds: 90
             periodSeconds: 5

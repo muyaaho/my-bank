@@ -1,9 +1,9 @@
-# MyBank 360 - Deployment Guide (Kind)
+# MyBank - Deployment Guide (Kind)
 
 ## 프로젝트 구조 (Flat Multi-Module MSA)
 
 ```
-my-bank-360/
+my-bank/
 ├── api-gateway/              # API Gateway (Port 8080)
 ├── config-server/            # Config Server (Port 8888)
 ├── service-discovery/        # Eureka Server (Port 8761)

@@ -1,6 +1,6 @@
 # Frontend Deployment Guide
 
-This guide explains how to deploy the MyBank 360 frontend application.
+This guide explains how to deploy the MyBank frontend application.
 
 ## Architecture
 

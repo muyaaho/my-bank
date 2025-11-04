@@ -8,7 +8,7 @@ data:
   SERVER_PORT: "8081"
 
   # PostgreSQL Configuration
-  SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres:5432/mybank_auth"
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres-auth:5432/mybank_auth"
   SPRING_DATASOURCE_DRIVER_CLASS_NAME: "org.postgresql.Driver"
 
   # JPA Configuration

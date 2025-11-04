@@ -9,7 +9,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-echo "🚀 Complete MyBank 360 Deployment to Kind"
+echo "🚀 Complete MyBank Deployment to Kind"
 echo "=========================================="
 echo ""
 

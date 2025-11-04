@@ -1,6 +1,6 @@
-# MyBank 360 Frontend
+# MyBank Frontend
 
-Modern Next.js frontend for the MyBank 360 personal finance management platform.
+Modern Next.js frontend for the MyBank personal finance management platform.
 
 ## Tech Stack
 
@@ -314,4 +314,4 @@ docker-compose up -d frontend
 
 ## License
 
-Private - MyBank 360 Project
+Private - MyBank Project

@@ -7,6 +7,8 @@ import com.mybank.auth.model.User;
 import com.mybank.auth.repository.UserRepository;
 import com.mybank.common.exception.BusinessException;
 import com.mybank.common.security.JwtUtil;
+import com.mybank.common.session.SessionService;
+import com.mybank.common.session.UserSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -32,6 +34,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final SessionService sessionService;
     private final RedisTemplate<String, Object> redisTemplate;
 
     private static final int MAX_LOGIN_ATTEMPTS = 5;
@@ -93,8 +96,8 @@ public class AuthService {
         String accessToken = generateAccessToken(user);
         String refreshToken = generateRefreshToken(user);
 
-        // Cache user session in Redis
-        cacheUserSession(user.getId(), accessToken);
+        // Create global session in Redis
+        createUserSession(user, accessToken);
 
         return buildLoginResponse(user, accessToken, refreshToken);
     }
@@ -102,9 +105,8 @@ public class AuthService {
     public void logout(String userId, String token) {
         log.info("User logout: {}", userId);
 
-        // Invalidate token in Redis
-        String sessionKey = "session:" + userId;
-        redisTemplate.delete(sessionKey);
+        // Invalidate session using SessionService
+        sessionService.invalidateSession(userId, token);
 
         // Add token to blacklist
         String blacklistKey = "blacklist:" + token;
@@ -149,9 +151,18 @@ public class AuthService {
         return jwtUtil.generateToken(user.getId());
     }
 
-    private void cacheUserSession(String userId, String token) {
-        String sessionKey = "session:" + userId;
-        redisTemplate.opsForValue().set(sessionKey, token, 24, TimeUnit.HOURS);
+    private void createUserSession(User user, String token) {
+        UserSession session = UserSession.builder()
+                .userId(user.getId())
+                .username(user.getEmail())
+                .roles(user.getRoles())
+                .token(token)
+                .createdAt(LocalDateTime.now())
+                .lastAccessedAt(LocalDateTime.now())
+                .build();
+
+        sessionService.createSession(user.getId(), token, session);
+        log.info("Created global session for user: {}", user.getId());
     }
 
     private LoginResponse buildLoginResponse(User user, String accessToken, String refreshToken) {

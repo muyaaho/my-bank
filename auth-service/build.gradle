@@ -1,14 +1,15 @@
 dependencies {
     // Common library
-    implementation project(':common-lib')
+    implementation project(':common')
 
     // Spring Cloud
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+    implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
 
     // OAuth 2.0
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
 
-    // PostgreSQL for user data
+    // PostgreSQL for auth credentials
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     runtimeOnly 'org.postgresql:postgresql'
 }

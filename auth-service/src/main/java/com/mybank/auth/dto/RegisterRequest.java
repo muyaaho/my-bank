@@ -18,19 +18,18 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class RegisterRequest {
 
-    @Email(message = "Invalid email format")
-    @NotBlank(message = "Email is required")
+    @Email(message = "올바른 이메일 형식이 아닙니다")
+    @NotBlank(message = "이메일은 필수입니다")
     private String email;
 
-    @NotBlank(message = "Password is required")
-    @Size(min = 8, message = "Password must be at least 8 characters")
-    @Pattern(regexp = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=]).*$",
-             message = "Password must contain at least one digit, one lowercase, one uppercase, and one special character")
+    @NotBlank(message = "비밀번호는 필수입니다")
+    @Size(min = 8, message = "비밀번호는 최소 8자 이상이어야 합니다")
     private String password;
 
-    @NotBlank(message = "Name is required")
+    @NotBlank(message = "이름은 필수입니다")
+    @Size(min = 2, message = "이름은 최소 2자 이상이어야 합니다")
     private String name;
 
-    @Pattern(regexp = "^01[0-9]-?[0-9]{3,4}-?[0-9]{4}$", message = "Invalid phone number format")
+    @Pattern(regexp = "^01[0-9]{9,10}$", message = "올바른 휴대폰 번호 형식이 아닙니다 (예: 01012345678)")
     private String phoneNumber;
 }

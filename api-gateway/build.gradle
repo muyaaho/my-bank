@@ -1,7 +1,13 @@
 dependencies {
+    // Common library
+    implementation project(':common')
+
     implementation 'org.springframework.cloud:spring-cloud-starter-gateway'
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
     implementation 'org.springframework.boot:spring-boot-starter-data-redis-reactive'
+
+    // Spring Security WebFlux
+    implementation 'org.springframework.boot:spring-boot-starter-security'
 
     // JWT for authentication
     implementation 'io.jsonwebtoken:jjwt-api:0.12.3'

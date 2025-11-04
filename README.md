@@ -1,4 +1,4 @@
-# MyBank 360 - 현대적인 핀테크 플랫폼
+# MyBank - 현대적인 핀테크 플랫폼
 
 **Spring Boot 3**, **Spring Cloud**, **Kafka**, **MongoDB**, **Next.js**로 구축된 클라우드 네이티브 마이크로서비스 기반 핀테크 플랫폼입니다. 높은 확장성과 성능을 위해 **MSA (Microservices Architecture)** 및 **EDA (Event-Driven Architecture)** 패턴을 구현했습니다.
 

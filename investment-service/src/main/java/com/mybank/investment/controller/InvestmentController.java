@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @Slf4j
 @RestController
-@RequestMapping("/invest")
+@RequestMapping("/api/invest")
 @RequiredArgsConstructor
 public class InvestmentController {
 

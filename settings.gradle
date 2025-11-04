@@ -1,17 +1,15 @@
-rootProject.name = 'my-bank-360'
+rootProject.name = 'mybank'
 
 // Infrastructure modules
 include 'api-gateway'
-include 'config-server'
-include 'service-discovery'
 
 // Business microservices
 include 'auth-service'
+include 'user-service'
 include 'pfm-core-service'
 include 'payment-service'
 include 'investment-service'
-// include 'ai-coach-service'  // TODO: Not yet implemented
-// include 'content-community-service'  // TODO: Not yet implemented
 
 // Common library
-include 'common-lib'
+include 'common'
+include 'schema'

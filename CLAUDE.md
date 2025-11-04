@@ -4,16 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-MyBank 360 is a cloud-native fintech platform implementing **Microservices Architecture (MSA)** and **Event-Driven Architecture (EDA)** patterns. It provides personal financial management, investment services, payment/transfer capabilities with Spring Boot 3, Spring Cloud, Kafka, and Next.js 14.
+MyBank is a cloud-native fintech platform implementing **Microservices Architecture (MSA)** and **Event-Driven Architecture (EDA)** patterns. It provides personal financial management, investment services, payment/transfer capabilities with Spring Boot 3, Spring Cloud, Kafka, and Next.js 14.
 
 ## Architecture
 
 ### Microservices Structure
 
-- **Infrastructure Services**:
-  - `service-discovery` (Eureka, port 8761): Service registry
-  - `config-server` (port 8888): Centralized configuration
-  - `api-gateway` (port 8080): JWT authentication, request routing
+- **Infrastructure**:
+  - **Istio Service Mesh** (1.27.3): Service discovery, traffic management, security
+  - **Kubernetes**: Container orchestration (Kind for local development)
+  - `api-gateway` (port 8080): JWT authentication, request routing (Spring Cloud Gateway)
 
 - **Business Services**:
   - `auth-service` (port 8081): OAuth 2.0, JWT, user management (PostgreSQL)

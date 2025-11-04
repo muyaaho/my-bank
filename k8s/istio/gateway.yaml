@@ -7,42 +7,24 @@ spec:
   selector:
     istio: ingressgateway
   servers:
-    # Frontend (app.mybank.com)
+    # HTTPS for all services (*.mybank.com)
     - port:
         number: 443
-        name: https-app
+        name: https
         protocol: HTTPS
       tls:
         mode: SIMPLE
-        credentialName: mybank-tls-app
+        credentialName: mybank-tls-cert
       hosts:
-        - app.mybank.com
-    # API Gateway (api.mybank.com)
-    - port:
-        number: 443
-        name: https-api
-        protocol: HTTPS
-      tls:
-        mode: SIMPLE
-        credentialName: mybank-tls-api
-      hosts:
-        - api.mybank.com
-    # Eureka Dashboard (eureka.mybank.com)
-    - port:
-        number: 443
-        name: https-eureka
-        protocol: HTTPS
-      tls:
-        mode: SIMPLE
-        credentialName: mybank-tls-eureka
-      hosts:
-        - eureka.mybank.com
+        - "*.mybank.com"
+        - "mybank.com"
     # HTTP redirect to HTTPS
     - port:
         number: 80
         name: http
         protocol: HTTP
       hosts:
-        - "*"
+        - "*.mybank.com"
+        - "mybank.com"
       tls:
         httpsRedirect: true

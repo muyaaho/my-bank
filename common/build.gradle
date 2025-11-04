@@ -1,0 +1,54 @@
+plugins {
+    id 'java-library'
+}
+
+dependencies {
+    // Spring Web for REST controllers
+    api 'org.springframework.boot:spring-boot-starter-web'
+
+    // Spring Data MongoDB
+    api 'org.springframework.boot:spring-boot-starter-data-mongodb'
+
+    // Spring Data Redis (blocking)
+    api 'org.springframework.boot:spring-boot-starter-data-redis'
+
+    // Spring Data Redis Reactive (for reactive operations)
+    api 'org.springframework.boot:spring-boot-starter-data-redis-reactive'
+
+    // Spring Session Redis for global session management
+    api 'org.springframework.session:spring-session-data-redis'
+
+    // Spring Kafka
+    api 'org.springframework.kafka:spring-kafka'
+
+    // Spring Security
+    api 'org.springframework.boot:spring-boot-starter-security'
+
+    // Spring Cloud OpenFeign
+    api 'org.springframework.cloud:spring-cloud-starter-openfeign'
+
+    // JWT
+    api 'io.jsonwebtoken:jjwt-api:0.12.3'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.3'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.3'
+
+    // Validation
+    api 'org.springframework.boot:spring-boot-starter-validation'
+
+    // MapStruct for DTO mapping
+    api "org.mapstruct:mapstruct:${mapstructVersion}"
+    annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"
+
+    // Jackson for JSON processing
+    api 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+    api 'com.fasterxml.jackson.core:jackson-databind'
+}
+
+// Disable Spring Boot plugin for library module
+bootJar {
+    enabled = false
+}
+
+jar {
+    enabled = true
+}

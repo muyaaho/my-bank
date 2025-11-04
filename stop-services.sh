@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# MyBank 360 - Service Shutdown Script
+# MyBank - Service Shutdown Script
 
-echo "🛑 Stopping MyBank 360 Services..."
+echo "🛑 Stopping MyBank Services..."
 
 # Stop Docker Compose services
 echo "Stopping Docker infrastructure..."

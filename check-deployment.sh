@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "======================================"
-echo "  MyBank 360 Deployment Status"
+echo "  MyBank Deployment Status"
 echo "======================================"
 echo ""
 

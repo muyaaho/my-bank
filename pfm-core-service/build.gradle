@@ -1,6 +1,6 @@
 dependencies {
     // Common library
-    implementation project(':common-lib')
+    implementation project(':common')
 
     // Spring Cloud
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'

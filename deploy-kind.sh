@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Deploy MyBank 360 to Kind cluster
+# Deploy MyBank to Kind cluster
 
 set -e
 
@@ -10,7 +10,7 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-echo "🚀 Deploying MyBank 360 to Kind..."
+echo "🚀 Deploying MyBank to Kind..."
 echo ""
 
 # Check if kind is installed

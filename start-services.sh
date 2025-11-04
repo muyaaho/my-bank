@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# MyBank 360 - Service Startup Script
+# MyBank - Service Startup Script
 
-echo "🚀 Starting MyBank 360 Services..."
+echo "🚀 Starting MyBank Services..."
 echo ""
 
 # Colors for output

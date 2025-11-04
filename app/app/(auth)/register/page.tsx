@@ -47,23 +47,33 @@ export default function RegisterPage() {
     try {
       const { confirmPassword, ...registerData } = data;
       const response = await authApi.register(registerData);
-      
+
       if (response.success) {
         const { accessToken, refreshToken, user } = response.data;
-        
+
         // Store tokens
         apiClient.setAuth(accessToken, refreshToken);
-        
+
         // Update auth store
         setUser(user);
-        
+
         // Redirect to dashboard
         router.push('/dashboard');
       } else {
         setError(response.error || 'Registration failed');
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed. Please try again.');
+    } catch (err: any) {
+      // Use backend error messages directly for consistent user experience
+      let errorMessage = '회원가입에 실패했습니다. 잠시 후 다시 시도해주세요.';
+
+      if (err.response?.data?.message) {
+        // Backend provides Korean error messages
+        errorMessage = err.response.data.message;
+      } else if (err.request) {
+        errorMessage = '네트워크 연결을 확인해주세요.';
+      }
+
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }

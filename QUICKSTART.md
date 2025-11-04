@@ -1,4 +1,4 @@
-# MyBank 360 - Quick Start Guide
+# MyBank - Quick Start Guide
 
 ## 🚀 한번에 전체 시스템 배포하기
 

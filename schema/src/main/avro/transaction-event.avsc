@@ -1,0 +1,91 @@
+{
+  "type": "record",
+  "name": "TransactionEvent",
+  "namespace": "com.mybank.schema.event",
+  "doc": "Event for transaction/consumption activities. Published by Payment Service, consumed by PFM Core Service",
+  "fields": [
+    {
+      "name": "eventId",
+      "type": "string",
+      "doc": "Unique event identifier"
+    },
+    {
+      "name": "eventType",
+      "type": "string",
+      "doc": "Type of the event"
+    },
+    {
+      "name": "timestamp",
+      "type": "string",
+      "doc": "Event timestamp in ISO-8601 format"
+    },
+    {
+      "name": "correlationId",
+      "type": ["null", "string"],
+      "default": null,
+      "doc": "Correlation ID for distributed tracing"
+    },
+    {
+      "name": "userId",
+      "type": ["null", "string"],
+      "default": null,
+      "doc": "User ID associated with the event"
+    },
+    {
+      "name": "transactionId",
+      "type": "string",
+      "doc": "Unique transaction identifier"
+    },
+    {
+      "name": "accountId",
+      "type": "string",
+      "doc": "Account ID"
+    },
+    {
+      "name": "amount",
+      "type": {
+        "type": "bytes",
+        "logicalType": "decimal",
+        "precision": 19,
+        "scale": 4
+      },
+      "doc": "Transaction amount"
+    },
+    {
+      "name": "currency",
+      "type": "string",
+      "default": "KRW",
+      "doc": "Currency code (ISO 4217)"
+    },
+    {
+      "name": "category",
+      "type": ["null", "string"],
+      "default": null,
+      "doc": "Transaction category"
+    },
+    {
+      "name": "merchantName",
+      "type": ["null", "string"],
+      "default": null,
+      "doc": "Merchant name"
+    },
+    {
+      "name": "transactionType",
+      "type": {
+        "type": "enum",
+        "name": "TransactionType",
+        "symbols": ["DEBIT", "CREDIT"]
+      },
+      "doc": "Transaction type"
+    },
+    {
+      "name": "status",
+      "type": {
+        "type": "enum",
+        "name": "TransactionStatus",
+        "symbols": ["COMPLETED", "FAILED", "PENDING"]
+      },
+      "doc": "Transaction status"
+    }
+  ]
+}

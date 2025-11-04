@@ -55,3 +55,17 @@ logs/
 # Test coverage
 .jacoco/
 *.exec
+
+# Istio
+istio-*/
+
+# Certificates
+certs/
+*.crt
+*.key
+*.csr
+*.srl
+*.pem
+
+# Kubernetes
+*.kubeconfig

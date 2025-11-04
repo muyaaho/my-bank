@@ -1,10 +1,10 @@
 version: '3.8'
 
 services:
-  # PostgreSQL for Auth Service
-  postgres:
-    image: postgres:16-alpine
-    container_name: mybank-postgres
+  # PostgreSQL for auth-service
+  postgres-auth:
+    image: postgres:16
+    container_name: mybank-postgres-auth
     environment:
       POSTGRES_DB: mybank_auth
       POSTGRES_USER: mybank
@@ -12,16 +12,26 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_auth_data:/var/lib/postgresql/data
     networks:
       - mybank-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U mybank"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
-  # MongoDB for PFM, Payment, Investment services
+  # PostgreSQL for user-service
+  postgres-user:
+    image: postgres:16
+    container_name: mybank-postgres-user
+    environment:
+      POSTGRES_DB: mybank_user
+      POSTGRES_USER: mybank
+      POSTGRES_PASSWORD: mybank123
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_user_data:/var/lib/postgresql/data
+    networks:
+      - mybank-network
+
+  # MongoDB for business services
   mongodb:
     image: mongo:7
     container_name: mybank-mongodb
@@ -34,103 +44,69 @@ services:
       - mongodb_data:/data/db
     networks:
       - mybank-network
-    healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   # Redis for caching and session management
   redis:
     image: redis:7-alpine
     container_name: mybank-redis
+    command: redis-server --appendonly yes
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     networks:
       - mybank-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
-  # Zookeeper for Kafka
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.5.0
-    container_name: mybank-zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    ports:
-      - "2181:2181"
-    networks:
-      - mybank-network
-    healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "2181"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # Kafka for event streaming
+  # Kafka (Zookeeper-less mode with KRaft)
   kafka:
     image: confluentinc/cp-kafka:7.5.0
     container_name: mybank-kafka
-    depends_on:
-      zookeeper:
-        condition: service_healthy
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
     ports:
       - "9092:9092"
-      - "9093:9093"
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:9093
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
     networks:
       - mybank-network
-    healthcheck:
-      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
 
   # Kafka UI for monitoring
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: mybank-kafka-ui
-    depends_on:
-      kafka:
-        condition: service_healthy
-    ports:
-      - "8090:8080"
     environment:
       KAFKA_CLUSTERS_0_NAME: mybank-cluster
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9093
-      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    ports:
+      - "8090:8080"
+    depends_on:
+      - kafka
     networks:
       - mybank-network
 
-  # Prometheus for metrics collection
+  # Prometheus for metrics
   prometheus:
     image: prom/prometheus:latest
     container_name: mybank-prometheus
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
-      - '--web.console.templates=/usr/share/prometheus/consoles'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
     networks:
       - mybank-network
 
@@ -138,42 +114,27 @@ services:
   grafana:
     image: grafana/grafana:latest
     container_name: mybank-grafana
-    ports:
-      - "3001:3000"
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
+    ports:
+      - "3001:3000"
     volumes:
       - grafana_data:/var/lib/grafana
-    networks:
-      - mybank-network
     depends_on:
       - prometheus
-
-  # Frontend - Next.js application
-  frontend:
-    build:
-      context: ./app
-      dockerfile: Dockerfile
-    container_name: mybank-frontend
-    ports:
-      - "3000:3000"
-    environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8080
-      NODE_ENV: production
     networks:
       - mybank-network
-    depends_on:
-      - api-gateway
-    restart: unless-stopped
+
+volumes:
+  postgres_auth_data:
+  postgres_user_data:
+  mongodb_data:
+  redis_data:
+  kafka_data:
+  prometheus_data:
+  grafana_data:
 
 networks:
   mybank-network:
     driver: bridge
-
-volumes:
-  postgres_data:
-  mongodb_data:
-  redis_data:
-  prometheus_data:
-  grafana_data:

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Undeploy MyBank 360 from Kind cluster
+# Undeploy MyBank from Kind cluster
 
 set -e
 
@@ -10,7 +10,7 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-echo "🛑 Undeploying MyBank 360 from Kind..."
+echo "🛑 Undeploying MyBank from Kind..."
 echo ""
 
 # Parse arguments

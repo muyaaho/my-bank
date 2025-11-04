@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #######################################################################################
-# MyBank 360 - Complete Production Deployment Script
-# This script deploys the entire MyBank 360 system to Kubernetes (Kind)
+# MyBank - Complete Production Deployment Script
+# This script deploys the entire MyBank system to Kubernetes (Kind)
 #
 # Features:
 # - HTTPS with self-signed certificates
@@ -342,7 +342,7 @@ main() {
     cat << "EOF"
     ╔══════════════════════════════════════════════════════════╗
     ║                                                          ║
-    ║              MyBank 360 - Deployment Script              ║
+    ║              MyBank - Deployment Script              ║
     ║                                                          ║
     ║         Complete Production-Ready Deployment             ║
     ║                                                          ║
@@ -350,7 +350,7 @@ main() {
 EOF
 
     echo ""
-    log_warning "This script will deploy the complete MyBank 360 system."
+    log_warning "This script will deploy the complete MyBank system."
     log_warning "Make sure you have reviewed the prerequisites."
     echo ""
     read -p "Do you want to continue? (y/N) " -n 1 -r
@@ -377,7 +377,7 @@ EOF
     print_access_info
 
     echo ""
-    log_success "🎉 MyBank 360 deployment completed successfully!"
+    log_success "🎉 MyBank deployment completed successfully!"
     echo ""
     log_info "The system is now running. Please wait a few minutes for all services to start."
     log_info "You can monitor the progress with: kubectl get pods -n mybank -w"

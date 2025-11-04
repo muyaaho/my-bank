@@ -4,12 +4,13 @@ metadata:
   name: common-config
   namespace: mybank
 data:
-  # Eureka Configuration
-  EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: "http://service-discovery:8761/eureka/"
-  EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+  # Eureka Configuration - DISABLED (using Kubernetes Service Discovery + Istio)
+  EUREKA_CLIENT_ENABLED: "false"
+  EUREKA_CLIENT_REGISTER_WITH_EUREKA: "false"
+  EUREKA_CLIENT_FETCH_REGISTRY: "false"
 
   # Kafka Configuration
-  SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka:9093"
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
 
   # Redis Configuration
   SPRING_DATA_REDIS_HOST: "redis"
