@@ -1,0 +1,126 @@
+# Production Environment Overlay
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+bases:
+  - ../../base
+
+namespace: mybank
+
+namePrefix: prod-
+
+commonLabels:
+  environment: production
+
+# Replicas for production (high availability)
+replicas:
+  - name: api-gateway
+    count: 3
+  - name: auth-service
+    count: 3
+  - name: user-service
+    count: 2
+  - name: pfm-core-service
+    count: 3
+  - name: payment-service
+    count: 3
+  - name: investment-service
+    count: 2
+  - name: frontend
+    count: 3
+
+# ConfigMap overrides for production
+configMapGenerator:
+  - name: common-config
+    behavior: merge
+    literals:
+      - SPRING_PROFILES_ACTIVE=production
+      - LOGGING_LEVEL_ROOT=WARN
+      - LOGGING_LEVEL_COM_MYBANK=INFO
+      - MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED=true
+
+# Use production secrets (sealed-secrets)
+secretGenerator:
+  - name: common-secret
+    behavior: replace
+    envs:
+      - secrets.env
+
+# Image tags for production (use specific versions)
+images:
+  - name: mybank/api-gateway
+    newTag: "1.0.0"
+  - name: mybank/auth-service
+    newTag: "1.0.0"
+  - name: mybank/user-service
+    newTag: "1.0.0"
+  - name: mybank/pfm-core-service
+    newTag: "1.0.0"
+  - name: mybank/payment-service
+    newTag: "1.0.0"
+  - name: mybank/investment-service
+    newTag: "1.0.0"
+  - name: mybank/frontend
+    newTag: "1.0.0"
+
+patches:
+  # Resource limits patch (higher for production)
+  - patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: "512Mi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: "500m"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "2Gi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: "2000m"
+    target:
+      kind: Deployment
+      labelSelector: "tier=backend"
+
+  # Add PodDisruptionBudget for high availability
+  - patch: |-
+      apiVersion: policy/v1
+      kind: PodDisruptionBudget
+      metadata:
+        name: backend-pdb
+      spec:
+        minAvailable: 1
+        selector:
+          matchLabels:
+            tier: backend
+    target:
+      kind: PodDisruptionBudget
+
+  # Add HorizontalPodAutoscaler
+  - patch: |-
+      apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: api-gateway-hpa
+      spec:
+        scaleTargetRef:
+          apiVersion: apps/v1
+          kind: Deployment
+          name: api-gateway
+        minReplicas: 3
+        maxReplicas: 10
+        metrics:
+        - type: Resource
+          resource:
+            name: cpu
+            target:
+              type: Utilization
+              averageUtilization: 70
+        - type: Resource
+          resource:
+            name: memory
+            target:
+              type: Utilization
+              averageUtilization: 80
+    target:
+      kind: HorizontalPodAutoscaler

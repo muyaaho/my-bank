@@ -1,0 +1,97 @@
+# Infrastructure component configurations
+# Inherits from parent values.yaml
+
+postgres:
+  auth:
+    enabled: true
+    replicas: 1
+    image:
+      repository: postgres
+      tag: "16-alpine"
+    database: mybank_auth
+    port: 5432
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "250m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+    persistence:
+      enabled: true
+      size: 1Gi
+
+  user:
+    enabled: true
+    replicas: 1
+    image:
+      repository: postgres
+      tag: "16-alpine"
+    database: mybank_user
+    port: 5433
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "250m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+    persistence:
+      enabled: true
+      size: 1Gi
+
+mongodb:
+  enabled: true
+  replicas: 1
+  image:
+    repository: mongo
+    tag: "7"
+  port: 27017
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+  persistence:
+    enabled: true
+    size: 2Gi
+
+redis:
+  enabled: true
+  replicas: 1
+  image:
+    repository: redis
+    tag: "7-alpine"
+  port: 6379
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"
+
+kafka:
+  enabled: true
+  replicas: 1
+  image:
+    repository: confluentinc/cp-kafka
+    tag: "7.5.0"
+  ports:
+    internal: 9093
+    external: 9092
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+  persistence:
+    enabled: true
+    size: 5Gi
+
+  zookeeper:
+    enabled: false  # Using KRaft mode

@@ -15,7 +15,7 @@ spring:
       routes:
         # Auth Service (Public - no JWT filter)
         - id: auth-service
-          uri: http://auth-service:8081
+          uri: http://auth-service.mybank.svc.cluster.local:8081
           predicates:
             - Path=/api/v1/auth/**
           filters:

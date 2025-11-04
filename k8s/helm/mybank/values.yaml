@@ -1,0 +1,227 @@
+# Default values for mybank
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+global:
+  namespace: mybank
+  environment: development
+  imageRegistry: mybank
+  imagePullPolicy: IfNotPresent
+
+  # Common labels
+  labels:
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: mybank
+
+  # JWT Configuration
+  jwt:
+    secret: "mybank360-super-secret-key-for-jwt-token-generation-minimum-256-bits-production-change-this"
+    expiration: "86400000"  # 24 hours
+
+  # Database Configuration
+  postgres:
+    username: mybank
+    password: mybank123
+
+  mongodb:
+    username: mybank
+    password: mybank123
+    authDatabase: admin
+
+  redis:
+    password: ""  # No password for dev
+
+# Infrastructure components
+infrastructure:
+  enabled: true
+
+  postgres:
+    enabled: true
+    replicas: 1
+    image:
+      repository: postgres
+      tag: "16-alpine"
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "250m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+    persistence:
+      enabled: true
+      size: 1Gi
+      storageClass: standard
+
+  mongodb:
+    enabled: true
+    replicas: 1
+    image:
+      repository: mongo
+      tag: "7"
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "500m"
+      limits:
+        memory: "1Gi"
+        cpu: "1000m"
+    persistence:
+      enabled: true
+      size: 2Gi
+      storageClass: standard
+
+  redis:
+    enabled: true
+    replicas: 1
+    image:
+      repository: redis
+      tag: "7-alpine"
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "256Mi"
+        cpu: "200m"
+
+  kafka:
+    enabled: true
+    replicas: 1
+    image:
+      repository: confluentinc/cp-kafka
+      tag: "7.5.0"
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: "500m"
+      limits:
+        memory: "2Gi"
+        cpu: "1000m"
+    persistence:
+      enabled: true
+      size: 5Gi
+      storageClass: standard
+
+# Backend services
+services:
+  enabled: true
+
+  # Common service configuration
+  common:
+    replicas: 2
+    imagePullPolicy: IfNotPresent
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "500m"
+      limits:
+        memory: "1Gi"
+        cpu: "1000m"
+    livenessProbe:
+      initialDelaySeconds: 120
+      periodSeconds: 10
+    readinessProbe:
+      initialDelaySeconds: 90
+      periodSeconds: 5
+
+  # API Gateway
+  apiGateway:
+    enabled: true
+    name: api-gateway
+    port: 8080
+    image:
+      repository: mybank/api-gateway
+      tag: latest
+
+  # Auth Service
+  authService:
+    enabled: true
+    name: auth-service
+    port: 8081
+    image:
+      repository: mybank/auth-service
+      tag: latest
+    database:
+      name: mybank_auth
+      port: 5432
+
+  # User Service
+  userService:
+    enabled: true
+    name: user-service
+    port: 8085
+    image:
+      repository: mybank/user-service
+      tag: latest
+    database:
+      name: mybank_user
+      port: 5433
+
+  # PFM Core Service
+  pfmCoreService:
+    enabled: true
+    name: pfm-core-service
+    port: 8082
+    image:
+      repository: mybank/pfm-core-service
+      tag: latest
+    database:
+      name: mybank_pfm
+
+  # Payment Service
+  paymentService:
+    enabled: true
+    name: payment-service
+    port: 8083
+    image:
+      repository: mybank/payment-service
+      tag: latest
+    database:
+      name: mybank_payment
+
+  # Investment Service
+  investmentService:
+    enabled: true
+    name: investment-service
+    port: 8084
+    image:
+      repository: mybank/investment-service
+      tag: latest
+    database:
+      name: mybank_investment
+
+# Frontend
+frontend:
+  enabled: true
+  name: frontend
+  replicas: 2
+  port: 3000
+  image:
+    repository: mybank/frontend
+    tag: latest
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+# Istio Service Mesh
+istio:
+  enabled: true
+  gateway:
+    enabled: true
+    hosts:
+      - "*.mybank.com"
+  virtualService:
+    enabled: true
+
+# Monitoring
+monitoring:
+  enabled: false
+  prometheus:
+    enabled: false
+  grafana:
+    enabled: false

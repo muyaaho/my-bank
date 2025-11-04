@@ -1,0 +1,33 @@
+apiVersion: v2
+name: mybank
+description: MyBank Fintech Platform - Cloud-native microservices application
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords:
+  - fintech
+  - microservices
+  - spring-boot
+  - kafka
+  - istio
+
+maintainers:
+  - name: MyBank Team
+    email: team@mybank.com
+
+dependencies:
+  - name: infrastructure
+    version: "1.0.0"
+    repository: "file://./charts/infrastructure"
+    condition: infrastructure.enabled
+
+  - name: services
+    version: "1.0.0"
+    repository: "file://./charts/services"
+    condition: services.enabled
+
+  - name: frontend
+    version: "1.0.0"
+    repository: "file://./charts/frontend"
+    condition: frontend.enabled

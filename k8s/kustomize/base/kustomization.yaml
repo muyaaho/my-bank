@@ -1,0 +1,51 @@
+# Kustomize Base Configuration
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: mybank
+
+# Common labels applied to all resources
+commonLabels:
+  app.kubernetes.io/part-of: mybank
+  app.kubernetes.io/managed-by: kustomize
+
+# Namespace
+resources:
+  - namespace.yaml
+
+# ConfigMaps
+configMapGenerator:
+  - name: common-config
+    literals:
+      - SPRING_PROFILES_ACTIVE=kubernetes
+      - EUREKA_CLIENT_ENABLED=true
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - REDIS_HOST=redis
+      - MONGODB_HOST=mongodb
+
+# Secrets (use sealed-secrets in production)
+secretGenerator:
+  - name: common-secret
+    literals:
+      - JWT_SECRET=mybank360-super-secret-key-for-jwt-token-generation-minimum-256-bits
+      - POSTGRES_USERNAME=mybank
+      - POSTGRES_PASSWORD=mybank123
+      - MONGODB_USERNAME=mybank
+      - MONGODB_PASSWORD=mybank123
+
+# Images
+images:
+  - name: mybank/api-gateway
+    newTag: latest
+  - name: mybank/auth-service
+    newTag: latest
+  - name: mybank/user-service
+    newTag: latest
+  - name: mybank/pfm-core-service
+    newTag: latest
+  - name: mybank/payment-service
+    newTag: latest
+  - name: mybank/investment-service
+    newTag: latest
+  - name: mybank/frontend
+    newTag: latest

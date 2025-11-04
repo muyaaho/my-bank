@@ -1,0 +1,69 @@
+# Development Environment Overlay
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+bases:
+  - ../../base
+
+namespace: mybank
+
+namePrefix: dev-
+
+commonLabels:
+  environment: development
+
+# Replicas patch for development (reduce replicas)
+replicas:
+  - name: api-gateway
+    count: 1
+  - name: auth-service
+    count: 1
+  - name: user-service
+    count: 1
+  - name: pfm-core-service
+    count: 1
+  - name: payment-service
+    count: 1
+  - name: investment-service
+    count: 1
+  - name: frontend
+    count: 1
+
+# ConfigMap overrides for development
+configMapGenerator:
+  - name: common-config
+    behavior: merge
+    literals:
+      - SPRING_PROFILES_ACTIVE=development
+      - LOGGING_LEVEL_ROOT=DEBUG
+      - LOGGING_LEVEL_COM_MYBANK=DEBUG
+
+# Image tags for development (use 'dev' tag)
+images:
+  - name: mybank/api-gateway
+    newTag: dev
+  - name: mybank/auth-service
+    newTag: dev
+  - name: mybank/user-service
+    newTag: dev
+  - name: mybank/pfm-core-service
+    newTag: dev
+  - name: mybank/payment-service
+    newTag: dev
+  - name: mybank/investment-service
+    newTag: dev
+  - name: mybank/frontend
+    newTag: dev
+
+patches:
+  # Resource limits patch (lower for dev)
+  - patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "512Mi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: "500m"
+    target:
+      kind: Deployment
+      labelSelector: "tier=backend"

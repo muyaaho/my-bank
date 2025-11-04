@@ -4,11 +4,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
+import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.cache.interceptor.CacheErrorHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.RedisConnectionFailureException;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -18,6 +22,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
+import org.springframework.util.StringUtils;
 
 import java.time.Duration;
 
@@ -25,6 +30,7 @@ import java.time.Duration;
  * Redis configuration for caching and session management
  * Implements Cache-Aside and Write-Through patterns
  */
+@Slf4j
 @Configuration
 @EnableCaching
 @RequiredArgsConstructor
@@ -37,7 +43,7 @@ public class RedisConfig {
         RedisStandaloneConfiguration config = new RedisStandaloneConfiguration();
         config.setHostName(redisProperties.getHost());
         config.setPort(redisProperties.getPort());
-        if (redisProperties.getPassword() != null) {
+        if (StringUtils.hasText(redisProperties.getPassword())) {
             config.setPassword(redisProperties.getPassword());
         }
         return new LettuceConnectionFactory(config);
@@ -86,5 +92,54 @@ public class RedisConfig {
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(config)
                 .build();
+    }
+
+    @Bean
+    public CacheErrorHandler cacheErrorHandler() {
+        return new CacheErrorHandler() {
+            @Override
+            public void handleCacheGetError(RuntimeException exception, Cache cache, Object key) {
+                handleError("GET", cache, key, exception);
+            }
+
+            @Override
+            public void handleCachePutError(RuntimeException exception, Cache cache, Object key, Object value) {
+                handleError("PUT", cache, key, exception);
+            }
+
+            @Override
+            public void handleCacheEvictError(RuntimeException exception, Cache cache, Object key) {
+                handleError("EVICT", cache, key, exception);
+            }
+
+            @Override
+            public void handleCacheClearError(RuntimeException exception, Cache cache) {
+                handleError("CLEAR", cache, null, exception);
+            }
+        };
+    }
+
+    private void handleError(String operation, Cache cache, Object key, RuntimeException exception) {
+        if (isRedisConnectionFailure(exception)) {
+            log.warn("Redis connection failed during cache {} operation for cache '{}' and key '{}'. Falling back without cache.",
+                    operation, cache != null ? cache.getName() : "unknown", key);
+            if (log.isDebugEnabled()) {
+                log.debug("Redis connection failure detail", exception);
+            }
+            return;
+        }
+        // Log other cache errors but don't throw to prevent cascading failures
+        log.error("Cache {} operation failed for cache '{}' and key '{}'. Continuing without cache.",
+                operation, cache != null ? cache.getName() : "unknown", key, exception);
+    }
+
+    private boolean isRedisConnectionFailure(Throwable throwable) {
+        if (throwable == null) {
+            return false;
+        }
+        if (throwable instanceof RedisConnectionFailureException) {
+            return true;
+        }
+        return isRedisConnectionFailure(throwable.getCause());
     }
 }

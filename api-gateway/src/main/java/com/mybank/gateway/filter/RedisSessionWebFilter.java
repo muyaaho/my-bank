@@ -69,13 +69,23 @@ public class RedisSessionWebFilter implements WebFilter {
                                 // Session not found or expired
                                 log.warn("Session not found or expired for user: {}", userId);
                                 return onError(exchange, "Session expired", HttpStatus.UNAUTHORIZED);
-                            }));
+                            }))
+                            .onErrorResume(error -> {
+                                // Handle Redis or deserialization errors
+                                log.error("Error retrieving session for user {}: {}", userId, error.getMessage());
+                                return onError(exchange, "Session error", HttpStatus.INTERNAL_SERVER_ERROR);
+                            });
                 })
                 .switchIfEmpty(Mono.defer(() -> {
                     // Token is blacklisted or not found
                     log.warn("Token is blacklisted or not found for user: {}", userId);
                     return onError(exchange, "Invalid or revoked token", HttpStatus.UNAUTHORIZED);
-                }));
+                }))
+                .onErrorResume(error -> {
+                    // Handle token validation errors
+                    log.error("Error validating token: {}", error.getMessage());
+                    return onError(exchange, "Token validation error", HttpStatus.INTERNAL_SERVER_ERROR);
+                });
     }
 
     private boolean isPublicEndpoint(String path) {

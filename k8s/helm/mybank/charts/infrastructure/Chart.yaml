@@ -1,0 +1,16 @@
+apiVersion: v2
+name: infrastructure
+description: Infrastructure components for MyBank (PostgreSQL, MongoDB, Redis, Kafka)
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords:
+  - postgres
+  - mongodb
+  - redis
+  - kafka
+
+maintainers:
+  - name: MyBank Team
+    email: team@mybank.com

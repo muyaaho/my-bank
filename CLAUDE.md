@@ -16,7 +16,8 @@ MyBank is a cloud-native fintech platform implementing **Microservices Architect
   - `api-gateway` (port 8080): JWT authentication, request routing (Spring Cloud Gateway)
 
 - **Business Services**:
-  - `auth-service` (port 8081): OAuth 2.0, JWT, user management (PostgreSQL)
+  - `auth-service` (port 8081): OAuth 2.0, JWT, authentication (PostgreSQL)
+  - `user-service` (port 8085): User profile management (PostgreSQL)
   - `pfm-core-service` (port 8082): Asset aggregation, spending analysis (MongoDB, Redis)
   - `payment-service` (port 8083): Transfers, payment history (MongoDB)
   - `investment-service` (port 8084): Round-up investing, portfolio (MongoDB)
@@ -148,34 +149,74 @@ Routes are defined in `api-gateway/src/main/resources/application.yml`:
 
 1. User calls `/api/v1/auth/login` → receives JWT token
 2. Frontend stores token, includes in `Authorization: Bearer <token>` header
-3. API Gateway validates JWT before forwarding to services
-4. Token secret: Defined in `jwt.secret` (must match in gateway + auth-service)
+3. API Gateway validates JWT via `JwtAuthenticationWebFilter` before forwarding to services
+4. Gateway extracts user info from JWT and adds headers to downstream requests:
+   - `X-User-Id`: User's unique identifier
+   - `X-User-Email`: User's email
+   - `X-User-Name`: User's display name
+   - `X-User-Roles`: Comma-separated roles
+5. Backend services read user context from these headers (no JWT parsing needed)
+6. Token secret: "mybank360-super-secret-key-for-jwt-token-generation-minimum-256-bits" (must match in gateway + auth-service)
 
 ### 3. Kafka Event Publishing
+
+**All events extend BaseEvent** in `common-lib`:
+```java
+public abstract class BaseEvent {
+    protected String eventId;      // UUID for idempotency
+    protected String eventType;    // Event discriminator
+    protected LocalDateTime timestamp;
+    protected String correlationId; // For tracing
+    protected String userId;       // For filtering
+}
+```
 
 **Producer** (e.g., in `payment-service`):
 ```java
 PaymentCompletedEvent event = PaymentCompletedEvent.builder()
     .eventId(UUID.randomUUID().toString())
+    .eventType("PAYMENT_COMPLETED")
     .timestamp(LocalDateTime.now())
+    .userId(payment.getUserId())
     .paymentId(payment.getId())
-    .accountId(payment.getAccountId())
+    .accountId(payment.getFromAccountId())
     .amount(payment.getAmount())
     .build();
 
-kafkaTemplate.send("payment-completed", event);
+// Use paymentId as key for partition ordering
+kafkaTemplate.send("payment-completed", event.getPaymentId(), event);
 ```
 
 **Consumer** (e.g., in `investment-service`):
 ```java
 @KafkaListener(topics = "payment-completed", groupId = "investment-service")
 public void consume(@Payload PaymentCompletedEvent event, Acknowledgment ack) {
-    // Process event
-    roundUpService.processRoundUp(event);
-    // Acknowledge only on success
-    ack.acknowledge();
+    try {
+        // Check idempotency using eventId
+        if (alreadyProcessed(event.getEventId())) {
+            ack.acknowledge();
+            return;
+        }
+
+        // Process event
+        roundUpService.processRoundUp(event);
+
+        // Mark as processed and acknowledge
+        markProcessed(event.getEventId());
+        ack.acknowledge();
+    } catch (Exception e) {
+        // Don't acknowledge - message will be redelivered
+        log.error("Failed to process event: {}", event.getEventId(), e);
+    }
 }
 ```
+
+**Kafka Configuration**:
+- KRaft mode (no Zookeeper dependency)
+- Idempotent producers: `enable.idempotence=true`
+- Acknowledgment: `acks=all` for durability
+- Manual offset commits for at-least-once delivery
+- JSON serialization with trusted packages: `com.mybank.*`
 
 ### 4. Redis Caching Pattern
 
@@ -188,7 +229,35 @@ public AssetSummary getAssets(String userId)
 public void syncAssets(String userId)
 ```
 
-### 5. Frontend API Integration
+**Cache Configuration**:
+- Default TTL: 30 minutes
+- JSON serialization with Jackson (JavaTimeModule for dates)
+- Graceful degradation: CacheErrorHandler logs errors but doesn't throw exceptions
+- If Redis is down, services continue without caching
+
+### 5. Distributed Locking (Redis)
+
+`payment-service` uses Redis distributed locks to prevent duplicate payments:
+```java
+// Acquire lock before processing payment
+String lockKey = "payment:lock:" + userId + ":" + accountId;
+Boolean acquired = redisTemplate.opsForValue()
+    .setIfAbsent(lockKey, "locked", Duration.ofSeconds(30));
+
+if (Boolean.TRUE.equals(acquired)) {
+    try {
+        // Process payment
+    } finally {
+        redisTemplate.delete(lockKey);
+    }
+}
+```
+
+- Lock TTL: 30 seconds
+- Atomic lock acquisition with `setIfAbsent`
+- Prevents race conditions in concurrent payment requests
+
+### 6. Frontend API Integration
 
 Frontend uses Axios client with interceptors (`app/lib/api/client.ts`):
 - Automatic JWT token injection
@@ -254,8 +323,12 @@ Located in `app/__tests__/`:
 ## Database Schemas
 
 ### PostgreSQL (auth-service)
-- **users**: User accounts with email, password (BCrypt), phone
+- **users**: id, email, password (BCrypt), name, phone_number, roles, is_active, is_locked, failed_login_attempts, fido2_credential_id, created_at, updated_at, last_login_at
+- **user_roles**: Collection table for roles
 - **oauth_providers**: Kakao OAuth integration
+
+### PostgreSQL (user-service)
+- **users**: User profile data (separate from auth credentials)
 
 ### MongoDB Collections
 - **pfm-core-service**:
@@ -286,9 +359,10 @@ Located in `app/__tests__/`:
 - Ensure JWT token is valid (check browser DevTools → Application → Local Storage)
 
 ### Database Connection Issues
-- PostgreSQL: Verify connection at localhost:5432, credentials: mybank/mybank123
-- MongoDB: Verify at localhost:27017, root/rootpassword
-- Redis: Verify at localhost:6379
+- PostgreSQL (auth): Verify at localhost:5432, credentials: mybank/mybank123
+- PostgreSQL (user): Verify at localhost:5433, credentials: mybank_user/mybank_user123
+- MongoDB: Verify at localhost:27017, credentials: root/rootpassword
+- Redis: Verify at localhost:6379 (no password for local development)
 
 ## Service Dependencies
 
@@ -305,11 +379,36 @@ Located in `app/__tests__/`:
 - Events: via Kafka topics (asynchronous, fire-and-forget)
 - Caching: Redis for session, asset data, rankings
 
+## Istio Service Mesh Configuration
+
+When deployed to Kubernetes, MyBank uses Istio for:
+- **Service Discovery**: Automatic service registration and discovery
+- **Traffic Management**: Load balancing, retries, timeouts
+- **Security**: Mutual TLS (mTLS) between services
+- **Observability**: Distributed tracing with Jaeger
+
+### Gateway and Virtual Services
+
+**Istio Gateway** (port 443 with TLS):
+- Handles external traffic at `*.mybank.com`
+- TLS termination with cert stored in `mybank-tls-cert` secret
+- Routes to frontend (`app.mybank.com`) and API (`api.mybank.com`)
+
+**Virtual Services**:
+- Frontend: Routes `https://app.mybank.com` → frontend service:3000
+- API: Routes `https://api.mybank.com/api/v1/*` → api-gateway:8080
+- CORS policy enabled on API routes
+
+**Access Services**:
+- Frontend: https://app.mybank.com or http://localhost:30000 (NodePort)
+- API Gateway: https://api.mybank.com
+- Eureka: https://eureka.mybank.com
+
 ## Deployment Scripts
 
-- `./scripts/deploy-complete-system.sh`: Full automated deployment to Kind
-- `./scripts/generate-certs.sh`: TLS certificates for ingress
-- `./scripts/setup-hosts.sh`: Configure /etc/hosts for local domains
+- `./scripts/deploy-complete-system.sh`: Full automated deployment to Kind (includes Istio setup)
+- `./scripts/generate-certs.sh`: TLS certificates for Istio ingress
+- `./scripts/setup-hosts.sh`: Configure /etc/hosts for `*.mybank.com` domains
 - `./scripts/install-argocd.sh`: Install ArgoCD for GitOps
 
 ## Monitoring and Observability
@@ -337,7 +436,11 @@ Located in `app/__tests__/`:
 - Use Lombok for boilerplate reduction (@Data, @Builder, @Slf4j)
 - Follow Spring conventions: @Service, @Repository, @RestController
 - Event classes extend BaseEvent (common-lib)
-- Use BigDecimal for money amounts
+- Use BigDecimal for money amounts (never float/double for currency)
+- **Aggregate Entity IDs**: Use UUID (String) for all MongoDB document IDs (not ObjectId)
+  - Example: `private String id;` with `@Id` annotation
+  - Generates UUID on creation for distributed system compatibility
+  - Enables event sourcing and cross-service references
 
 ### Frontend
 - TypeScript strict mode
