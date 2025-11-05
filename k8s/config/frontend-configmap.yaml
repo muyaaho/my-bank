@@ -4,6 +4,6 @@ metadata:
   name: frontend-config
   namespace: mybank
 data:
-  NEXT_PUBLIC_API_URL: "https://api.mybank.com"
+  NEXT_PUBLIC_API_URL: "http://localhost:8080"
   NODE_ENV: "production"
   NEXT_TELEMETRY_DISABLED: "1"

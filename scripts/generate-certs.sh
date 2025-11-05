@@ -16,111 +16,83 @@ openssl genrsa -out "$CERT_DIR/ca.key" 4096
 
 openssl req -x509 -new -nodes -key "$CERT_DIR/ca.key" \
   -sha256 -days 3650 -out "$CERT_DIR/ca.crt" \
-  -subj "/C=KR/ST=Seoul/L=Seoul/O=MyBank/OU=IT/CN=MyBank Root CA"
+  -subj "/C=KR/ST=Seoul/L=Seoul/O=MyBank CA/CN=MyBank Root CA"
 
 echo "✅ CA certificate generated"
 echo ""
 
-# Function to generate certificate for a domain
-generate_cert() {
-  local domain=$1
-  local common_name=$2
+# Generate wildcard certificate for *.mybank.com
+echo "2. Generating wildcard certificate for *.mybank.com..."
 
-  echo "Generating certificate for $domain..."
+# Generate private key
+openssl genrsa -out "$CERT_DIR/tls-mybank.key" 4096
 
-  # Generate private key
-  openssl genrsa -out "$CERT_DIR/$domain.key" 2048
+# Create certificate signing request (CSR)
+openssl req -new -key "$CERT_DIR/tls-mybank.key" \
+  -out "$CERT_DIR/tls-mybank.csr" \
+  -subj "/C=KR/ST=Seoul/L=Seoul/O=MyBank/OU=Engineering/CN=*.mybank.com/emailAddress=admin@mybank.com"
 
-  # Create certificate signing request (CSR)
-  openssl req -new -key "$CERT_DIR/$domain.key" \
-    -out "$CERT_DIR/$domain.csr" \
-    -subj "/C=KR/ST=Seoul/L=Seoul/O=MyBank/OU=IT/CN=$common_name"
-
-  # Create SAN config
-  cat > "$CERT_DIR/$domain.ext" <<EOF
+# Create SAN config with all domains
+cat > "$CERT_DIR/tls-mybank.ext" <<EOF
 authorityKeyIdentifier=keyid,issuer
 basicConstraints=CA:FALSE
 keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
+extendedKeyUsage = serverAuth
 subjectAltName = @alt_names
 
 [alt_names]
-DNS.1 = $common_name
-DNS.2 = *.$common_name
-DNS.3 = localhost
+DNS.1 = mybank.com
+DNS.2 = *.mybank.com
+DNS.3 = api.mybank.com
+DNS.4 = app.mybank.com
+DNS.5 = auth.mybank.com
+DNS.6 = user.mybank.com
+DNS.7 = pfm.mybank.com
+DNS.8 = payment.mybank.com
+DNS.9 = investment.mybank.com
+DNS.10 = eureka.mybank.com
+DNS.11 = grafana.mybank.com
+DNS.12 = kafka-ui.mybank.com
+DNS.13 = prometheus.mybank.com
+DNS.14 = argocd.mybank.com
+DNS.15 = localhost
 IP.1 = 127.0.0.1
 EOF
 
-  # Sign certificate with CA
-  openssl x509 -req -in "$CERT_DIR/$domain.csr" \
-    -CA "$CERT_DIR/ca.crt" -CAkey "$CERT_DIR/ca.key" \
-    -CAcreateserial -out "$CERT_DIR/$domain.crt" \
-    -days 825 -sha256 -extfile "$CERT_DIR/$domain.ext"
+# Sign certificate with CA
+openssl x509 -req -in "$CERT_DIR/tls-mybank.csr" \
+  -CA "$CERT_DIR/ca.crt" -CAkey "$CERT_DIR/ca.key" \
+  -CAcreateserial -out "$CERT_DIR/tls-mybank.crt" \
+  -days 825 -sha256 -extfile "$CERT_DIR/tls-mybank.ext"
 
-  # Clean up CSR and extension file
-  rm "$CERT_DIR/$domain.csr" "$CERT_DIR/$domain.ext"
+# Clean up CSR and extension file
+rm "$CERT_DIR/tls-mybank.csr" "$CERT_DIR/tls-mybank.ext"
 
-  echo "✅ Certificate for $domain generated"
-}
-
-# Generate certificates for all domains
-echo "2. Generating service certificates..."
+echo "✅ Wildcard certificate generated"
 echo ""
 
-generate_cert "app" "app.mybank.com"
-generate_cert "api" "api.mybank.com"
-generate_cert "eureka" "eureka.mybank.com"
-generate_cert "grafana" "grafana.mybank.com"
-generate_cert "kafka-ui" "kafka-ui.mybank.com"
-generate_cert "prometheus" "prometheus.mybank.com"
-generate_cert "argocd" "argocd.mybank.com"
-
+# Verify certificate
+echo "3. Verifying certificate..."
+openssl x509 -in "$CERT_DIR/tls-mybank.crt" -text -noout | grep -A 1 "Subject Alternative Name"
 echo ""
-echo "3. Creating Kubernetes TLS secrets..."
+
+echo "4. Creating Kubernetes TLS secrets..."
 echo ""
 
 # Create namespace if not exists
 kubectl create namespace mybank --dry-run=client -o yaml | kubectl apply -f -
 
-# Create TLS secrets for each service
-kubectl create secret tls mybank-tls-app \
-  --cert="$CERT_DIR/app.crt" \
-  --key="$CERT_DIR/app.key" \
-  --namespace=mybank \
+# Create single TLS secret for Istio Gateway
+kubectl create secret tls mybank-tls-cert \
+  --cert="$CERT_DIR/tls-mybank.crt" \
+  --key="$CERT_DIR/tls-mybank.key" \
+  --namespace=istio-system \
   --dry-run=client -o yaml | kubectl apply -f -
 
-kubectl create secret tls mybank-tls-api \
-  --cert="$CERT_DIR/api.crt" \
-  --key="$CERT_DIR/api.key" \
-  --namespace=mybank \
-  --dry-run=client -o yaml | kubectl apply -f -
-
-kubectl create secret tls mybank-tls-eureka \
-  --cert="$CERT_DIR/eureka.crt" \
-  --key="$CERT_DIR/eureka.key" \
-  --namespace=mybank \
-  --dry-run=client -o yaml | kubectl apply -f -
-
-kubectl create secret tls mybank-tls-grafana \
-  --cert="$CERT_DIR/grafana.crt" \
-  --key="$CERT_DIR/grafana.key" \
-  --namespace=mybank \
-  --dry-run=client -o yaml | kubectl apply -f -
-
-kubectl create secret tls mybank-tls-kafka-ui \
-  --cert="$CERT_DIR/kafka-ui.crt" \
-  --key="$CERT_DIR/kafka-ui.key" \
-  --namespace=mybank \
-  --dry-run=client -o yaml | kubectl apply -f -
-
-kubectl create secret tls mybank-tls-prometheus \
-  --cert="$CERT_DIR/prometheus.crt" \
-  --key="$CERT_DIR/prometheus.key" \
-  --namespace=mybank \
-  --dry-run=client -o yaml | kubectl apply -f -
-
-kubectl create secret tls mybank-tls-argocd \
-  --cert="$CERT_DIR/argocd.crt" \
-  --key="$CERT_DIR/argocd.key" \
+# Also create in mybank namespace for internal services
+kubectl create secret tls mybank-tls-cert \
+  --cert="$CERT_DIR/tls-mybank.crt" \
+  --key="$CERT_DIR/tls-mybank.key" \
   --namespace=mybank \
   --dry-run=client -o yaml | kubectl apply -f -
 
@@ -134,16 +106,13 @@ echo ""
 echo "✅ All certificates generated and stored in Kubernetes!"
 echo ""
 echo "📁 Certificate files location: $CERT_DIR/"
+echo "   - ca.crt / ca.key: Certificate Authority"
+echo "   - tls-mybank.crt / tls-mybank.key: Wildcard certificate for *.mybank.com"
 echo ""
 echo "📝 To trust these certificates on your local machine:"
 echo "   macOS: sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain $CERT_DIR/ca.crt"
 echo "   Linux: sudo cp $CERT_DIR/ca.crt /usr/local/share/ca-certificates/ && sudo update-ca-certificates"
 echo ""
 echo "⚠️  Don't forget to add these entries to /etc/hosts:"
-echo "   127.0.0.1 app.mybank.com"
-echo "   127.0.0.1 api.mybank.com"
-echo "   127.0.0.1 eureka.mybank.com"
-echo "   127.0.0.1 grafana.mybank.com"
-echo "   127.0.0.1 kafka-ui.mybank.com"
-echo "   127.0.0.1 prometheus.mybank.com"
-echo "   127.0.0.1 argocd.mybank.com"
+echo "   127.0.0.1 app.mybank.com api.mybank.com eureka.mybank.com"
+echo "   127.0.0.1 grafana.mybank.com kafka-ui.mybank.com prometheus.mybank.com argocd.mybank.com"

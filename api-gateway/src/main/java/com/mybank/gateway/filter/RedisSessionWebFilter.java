@@ -17,9 +17,17 @@ import reactor.core.publisher.Mono;
  * Validates session existence and freshness in Redis
  * Implements sliding window session expiration
  * Runs after JWT validation
+ *
+ * DEPRECATED: Replaced by TokenBlacklistFilter
+ * This approach is an anti-pattern in MSA:
+ * - JWT should be stateless, not require session lookup
+ * - Session storage causes serialization issues
+ * - Performance overhead (2 Redis ops per request)
+ *
+ * Use TokenBlacklistFilter instead (production pattern)
  */
 @Slf4j
-@Component
+// @Component  // DISABLED - Use TokenBlacklistFilter instead
 @RequiredArgsConstructor
 public class RedisSessionWebFilter implements WebFilter {
 

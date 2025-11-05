@@ -7,8 +7,7 @@ import com.mybank.auth.model.User;
 import com.mybank.auth.repository.UserRepository;
 import com.mybank.common.exception.BusinessException;
 import com.mybank.common.security.JwtUtil;
-import com.mybank.common.session.SessionService;
-import com.mybank.common.session.UserSession;
+import com.mybank.common.session.SessionBlacklistService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -34,7 +33,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
-    private final SessionService sessionService;
+    private final SessionBlacklistService blacklistService;
     private final RedisTemplate<String, Object> redisTemplate;
 
     private static final int MAX_LOGIN_ATTEMPTS = 5;
@@ -96,21 +95,24 @@ public class AuthService {
         String accessToken = generateAccessToken(user);
         String refreshToken = generateRefreshToken(user);
 
-        // Create global session in Redis
-        createUserSession(user, accessToken);
+        // No session creation needed - JWT is stateless!
+        // Token contains all user info (userId, roles, etc.)
+        log.info("User logged in successfully: {}", user.getId());
 
         return buildLoginResponse(user, accessToken, refreshToken);
     }
 
+    /**
+     * Logout user by adding token to blacklist
+     * Production pattern: No session to invalidate, just blacklist the token
+     */
     public void logout(String userId, String token) {
         log.info("User logout: {}", userId);
 
-        // Invalidate session using SessionService
-        sessionService.invalidateSession(userId, token);
+        // Add token to blacklist (production pattern)
+        blacklistService.addToBlacklist(token);
 
-        // Add token to blacklist
-        String blacklistKey = "blacklist:" + token;
-        redisTemplate.opsForValue().set(blacklistKey, "1", 24, TimeUnit.HOURS);
+        log.info("Token blacklisted successfully for user: {}", userId);
     }
 
     public LoginResponse refreshToken(String refreshToken) {
@@ -151,19 +153,9 @@ public class AuthService {
         return jwtUtil.generateToken(user.getId());
     }
 
-    private void createUserSession(User user, String token) {
-        UserSession session = UserSession.builder()
-                .userId(user.getId())
-                .username(user.getEmail())
-                .roles(user.getRoles())
-                .token(token)
-                .createdAt(LocalDateTime.now())
-                .lastAccessedAt(LocalDateTime.now())
-                .build();
-
-        sessionService.createSession(user.getId(), token, session);
-        log.info("Created global session for user: {}", user.getId());
-    }
+    // REMOVED: createUserSession method
+    // Production pattern: JWT is stateless, no session creation needed
+    // All user info is in the JWT payload (userId, roles, email)
 
     private LoginResponse buildLoginResponse(User user, String accessToken, String refreshToken) {
         return LoginResponse.builder()

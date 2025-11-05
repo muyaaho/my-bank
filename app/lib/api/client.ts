@@ -5,6 +5,8 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 class ApiClient {
   private client: AxiosInstance;
+  private accessToken: string | null = null;
+  private refreshToken: string | null = null;
 
   constructor() {
     this.client = axios.create({
@@ -22,7 +24,7 @@ class ApiClient {
     // Request interceptor - Add JWT token
     this.client.interceptors.request.use(
       (config: InternalAxiosRequestConfig) => {
-        const token = this.getAccessToken();
+        const token = this.accessToken;
         if (token && config.headers) {
           config.headers.Authorization = `Bearer ${token}`;
         }
@@ -42,7 +44,7 @@ class ApiClient {
           originalRequest._retry = true;
 
           try {
-            const refreshToken = this.getRefreshToken();
+            const refreshToken = this.refreshToken;
             if (refreshToken) {
               const { data } = await axios.post<ApiResponse<{ accessToken: string; refreshToken: string }>>(
                 `${API_URL}/api/v1/auth/refresh`,
@@ -50,7 +52,15 @@ class ApiClient {
               );
 
               if (data.success) {
-                this.setTokens(data.data.accessToken, data.data.refreshToken);
+                // Update tokens in memory
+                this.setAuth(data.data.accessToken, data.data.refreshToken);
+
+                // Update authStore
+                if (typeof window !== 'undefined') {
+                  const { useAuthStore } = await import('@/stores/authStore');
+                  useAuthStore.getState().setTokens(data.data.accessToken, data.data.refreshToken);
+                }
+
                 if (originalRequest.headers) {
                   originalRequest.headers.Authorization = `Bearer ${data.data.accessToken}`;
                 }
@@ -58,8 +68,12 @@ class ApiClient {
               }
             }
           } catch (refreshError) {
-            this.clearTokens();
+            this.clearAuth();
             if (typeof window !== 'undefined') {
+              // Clear authStore
+              const { useAuthStore } = await import('@/stores/authStore');
+              useAuthStore.getState().clearUser();
+              useAuthStore.getState().clearTokens();
               window.location.href = '/login';
             }
             return Promise.reject(refreshError);
@@ -69,29 +83,6 @@ class ApiClient {
         return Promise.reject(error);
       }
     );
-  }
-
-  private getAccessToken(): string | null {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('accessToken');
-  }
-
-  private getRefreshToken(): string | null {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('refreshToken');
-  }
-
-  private setTokens(accessToken: string, refreshToken: string): void {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('refreshToken', refreshToken);
-  }
-
-  private clearTokens(): void {
-    if (typeof window === 'undefined') return;
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
   }
 
   // Generic request methods
@@ -117,15 +108,17 @@ class ApiClient {
 
   // Auth methods
   setAuth(accessToken: string, refreshToken: string) {
-    this.setTokens(accessToken, refreshToken);
+    this.accessToken = accessToken;
+    this.refreshToken = refreshToken;
   }
 
   clearAuth() {
-    this.clearTokens();
+    this.accessToken = null;
+    this.refreshToken = null;
   }
 
   isAuthenticated(): boolean {
-    return !!this.getAccessToken();
+    return !!this.accessToken;
   }
 }
 

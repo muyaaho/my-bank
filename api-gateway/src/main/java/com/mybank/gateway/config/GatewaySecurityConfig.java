@@ -1,7 +1,7 @@
 package com.mybank.gateway.config;
 
 import com.mybank.gateway.filter.JwtAuthenticationWebFilter;
-import com.mybank.gateway.filter.RedisSessionWebFilter;
+import com.mybank.gateway.filter.TokenBlacklistFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,7 +18,11 @@ import java.util.List;
 
 /**
  * API Gateway Security Configuration
- * Implements JWT validation and Redis session checking
+ * Implements Production-Grade JWT + Blacklist Pattern
+ *
+ * Filter Chain:
+ * 1. JwtAuthenticationWebFilter - Validates JWT signature/expiration
+ * 2. TokenBlacklistFilter - Checks if token is revoked (logged out)
  */
 @Configuration
 @EnableWebFluxSecurity
@@ -26,7 +30,7 @@ import java.util.List;
 public class GatewaySecurityConfig {
 
     private final JwtAuthenticationWebFilter jwtAuthenticationWebFilter;
-    private final RedisSessionWebFilter redisSessionWebFilter;
+    private final TokenBlacklistFilter tokenBlacklistFilter;
 
     @Bean
     public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
@@ -41,10 +45,10 @@ public class GatewaySecurityConfig {
                         // All other endpoints require authentication
                         .anyExchange().authenticated()
                 )
-                // Add JWT authentication filter
+                // Add JWT authentication filter (Order: 1)
                 .addFilterAt(jwtAuthenticationWebFilter, SecurityWebFiltersOrder.AUTHENTICATION)
-                // Add Redis session validation filter
-                .addFilterAfter(redisSessionWebFilter, SecurityWebFiltersOrder.AUTHENTICATION)
+                // Add Token blacklist filter (Order: 2)
+                .addFilterAfter(tokenBlacklistFilter, SecurityWebFiltersOrder.AUTHENTICATION)
                 .build();
     }
 

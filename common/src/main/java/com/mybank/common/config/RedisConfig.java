@@ -72,6 +72,10 @@ public class RedisConfig {
         return template;
     }
 
+    // REMOVED: stringRedisTemplate bean
+    // Spring Boot Auto-Configuration already provides this bean
+    // We use the default stringRedisTemplate provided by Spring Boot
+
     @Bean
     public CacheManager cacheManager(RedisConnectionFactory connectionFactory) {
         ObjectMapper objectMapper = new ObjectMapper();

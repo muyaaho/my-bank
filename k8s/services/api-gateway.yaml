@@ -7,7 +7,7 @@ metadata:
     app: api-gateway
     tier: gateway
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: api-gateway
@@ -58,11 +58,12 @@ metadata:
   name: api-gateway
   namespace: mybank
 spec:
-  type: ClusterIP
+  type: NodePort
   selector:
     app: api-gateway
   ports:
     - port: 8080
       targetPort: 8080
+      nodePort: 30080
       protocol: TCP
       name: http

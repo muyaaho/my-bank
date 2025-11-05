@@ -24,9 +24,15 @@ import java.util.stream.Collectors;
  * JWT Authentication WebFilter for API Gateway
  * Validates JWT tokens and extracts user information
  * Runs as the first filter in the authentication chain
+ *
+ * Order: 1 (runs before TokenBlacklistFilter)
+ * - Validates JWT signature and expiration
+ * - Extracts user info (userId, email, roles) from JWT
+ * - Adds X-User-* headers for downstream services
  */
 @Slf4j
 @Component
+@org.springframework.core.annotation.Order(1)
 @RequiredArgsConstructor
 public class JwtAuthenticationWebFilter implements WebFilter {
 

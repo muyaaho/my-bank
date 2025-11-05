@@ -4,4 +4,4 @@ metadata:
   name: mybank
   labels:
     name: mybank
-    environment: development
+    istio-injection: enabled

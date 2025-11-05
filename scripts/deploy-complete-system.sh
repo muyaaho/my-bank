@@ -177,20 +177,26 @@ generate_certificates() {
     log_success "Certificates generated"
 }
 
-# Install NGINX Ingress Controller
-install_ingress() {
-    print_header "Installing NGINX Ingress Controller"
+# Install Istio
+install_istio() {
+    print_header "Installing Istio Service Mesh"
 
-    log_info "Applying Ingress Controller manifest..."
-    kubectl apply -f k8s/ingress/ingress-nginx-setup.yaml
+    if ! command -v istioctl &> /dev/null; then
+        log_warning "istioctl not found. Installing Istio..."
+        curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.27.3 sh -
+        export PATH=$PWD/istio-1.27.3/bin:$PATH
+    fi
 
-    log_info "Waiting for Ingress Controller to be ready..."
-    kubectl wait --namespace ingress-nginx \
+    log_info "Installing Istio with default profile..."
+    istioctl install --set profile=default -y
+
+    log_info "Waiting for Istio components to be ready..."
+    kubectl wait --namespace istio-system \
         --for=condition=ready pod \
-        --selector=app.kubernetes.io/component=controller \
+        --selector=app=istiod \
         --timeout=300s
 
-    log_success "Ingress Controller installed"
+    log_success "Istio installed"
 }
 
 # Deploy infrastructure
@@ -244,19 +250,22 @@ deploy_services() {
 
     # Deploy frontend
     log_info "Deploying frontend..."
-    kubectl apply -f k8s/frontend-deployment.yaml
+    kubectl apply -f k8s/services/frontend.yaml
 
     log_success "Microservices deployed"
 }
 
-# Deploy Ingress
-deploy_ingress_rules() {
-    print_header "Deploying Ingress Rules"
+# Deploy Istio Gateway and VirtualServices
+deploy_istio_routing() {
+    print_header "Deploying Istio Gateway and VirtualServices"
 
-    log_info "Applying Ingress rules..."
-    kubectl apply -f k8s/ingress/mybank-ingress.yaml
+    log_info "Applying Istio Gateway..."
+    kubectl apply -f k8s/istio/gateway.yaml
 
-    log_success "Ingress rules deployed"
+    log_info "Applying VirtualServices..."
+    kubectl apply -f k8s/istio/virtual-service.yaml
+
+    log_success "Istio routing configured"
 }
 
 # Install ArgoCD
@@ -281,8 +290,12 @@ verify_deployment() {
     kubectl get svc -n "${NAMESPACE}"
 
     echo ""
-    log_info "Checking ingress..."
-    kubectl get ingress -n "${NAMESPACE}"
+    log_info "Checking Istio Gateway..."
+    kubectl get gateway -n "${NAMESPACE}"
+
+    echo ""
+    log_info "Checking VirtualServices..."
+    kubectl get virtualservice -n "${NAMESPACE}"
 
     log_success "Deployment verification complete"
 }
@@ -367,11 +380,11 @@ EOF
     build_images
     load_images_to_kind
     setup_hosts
+    install_istio
     generate_certificates
-    install_ingress
     deploy_infrastructure
     deploy_services
-    deploy_ingress_rules
+    deploy_istio_routing
     install_argocd
     verify_deployment
     print_access_info

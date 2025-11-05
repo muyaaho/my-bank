@@ -30,7 +30,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { user, clearUser } = useAuthStore();
+  const { user, clearUser, clearTokens } = useAuthStore();
 
   const handleLogout = async () => {
     try {
@@ -38,8 +38,10 @@ export function Sidebar() {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      apiClient.clearAuth();
+      // Clear user state and tokens
       clearUser();
+      clearTokens();
+      apiClient.clearAuth();
       router.push('/login');
     }
   };

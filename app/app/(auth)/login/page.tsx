@@ -22,7 +22,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
-  const { setUser } = useAuthStore();
+  const { setUser, setTokens } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -40,16 +40,19 @@ export default function LoginPage() {
 
     try {
       const response = await authApi.login(data);
-      
+
       if (response.success) {
         const { accessToken, refreshToken, user } = response.data;
-        
-        // Store tokens
-        apiClient.setAuth(accessToken, refreshToken);
-        
-        // Update auth store
+
+        // Store tokens in localStorage
+        setTokens(accessToken, refreshToken);
+
+        // Store user in Zustand
         setUser(user);
-        
+
+        // Set in apiClient for immediate use
+        apiClient.setAuth(accessToken, refreshToken);
+
         // Redirect to dashboard
         router.push('/dashboard');
       } else {
