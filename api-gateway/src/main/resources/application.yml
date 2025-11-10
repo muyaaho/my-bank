@@ -29,11 +29,19 @@ spring:
           filters:
             - RewritePath=/api/v1/(?<segment>.*), /api/$\{segment}
 
-        # PFM Core Service (Protected)
-        - id: pfm-core-service
-          uri: http://pfm-core-service:8082
+        # Asset Service (Protected)
+        - id: asset-service
+          uri: http://asset-service:8086
           predicates:
-            - Path=/api/v1/pfm/**
+            - Path=/api/v1/asset/**
+          filters:
+            - RewritePath=/api/v1/(?<segment>.*), /api/$\{segment}
+
+        # Analytics Service (Protected)
+        - id: analytics-service
+          uri: http://analytics-service:8087
+          predicates:
+            - Path=/api/v1/analytics/**
           filters:
             - RewritePath=/api/v1/(?<segment>.*), /api/$\{segment}
 

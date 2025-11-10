@@ -14,13 +14,13 @@ import { useAuthStore } from '@/stores/authStore';
 import Link from 'next/link';
 
 const registerSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  email: z.string().email('Valid email is required'),
-  phoneNumber: z.string().regex(/^[0-9]{10,11}$/, 'Phone number must be 10-11 digits'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  name: z.string().min(2, '이름은 최소 2자 이상이어야 합니다'),
+  email: z.string().email('올바른 이메일을 입력해주세요'),
+  phoneNumber: z.string().regex(/^[0-9]{10,11}$/, '휴대폰 번호는 10-11자리 숫자여야 합니다'),
+  password: z.string().min(8, '비밀번호는 최소 8자 이상이어야 합니다'),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
+  message: "비밀번호가 일치하지 않습니다",
   path: ['confirmPassword'],
 });
 
@@ -60,7 +60,7 @@ export default function RegisterPage() {
         // Redirect to dashboard
         router.push('/dashboard');
       } else {
-        setError(response.error || 'Registration failed');
+        setError(response.error || '회원가입에 실패했습니다');
       }
     } catch (err: any) {
       // Use backend error messages directly for consistent user experience
@@ -80,11 +80,11 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4 py-12">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex flex-col justify-center bg-gradient-to-br from-primary-50 to-primary-100 px-5 py-8">
+      <div className="w-full">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">MyBank 360</h1>
-          <p className="text-gray-600">Create your account</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">MyBank 360</h1>
+          <p className="text-sm text-gray-600">새로운 계정 만들기</p>
         </div>
 
         <Card>
@@ -96,22 +96,22 @@ export default function RegisterPage() {
             )}
 
             <Input
-              label="Full Name"
-              placeholder="John Doe"
+              label="이름"
+              placeholder="홍길동"
               error={errors.name?.message}
               {...register('name')}
             />
 
             <Input
-              label="Email"
+              label="이메일"
               type="email"
-              placeholder="you@example.com"
+              placeholder="example@mybank.com"
               error={errors.email?.message}
               {...register('email')}
             />
 
             <Input
-              label="Phone Number"
+              label="휴대폰 번호"
               type="tel"
               placeholder="01012345678"
               error={errors.phoneNumber?.message}
@@ -119,17 +119,17 @@ export default function RegisterPage() {
             />
 
             <Input
-              label="Password"
+              label="비밀번호"
               type="password"
-              placeholder="Minimum 8 characters"
+              placeholder="최소 8자 이상"
               error={errors.password?.message}
               {...register('password')}
             />
 
             <Input
-              label="Confirm Password"
+              label="비밀번호 확인"
               type="password"
-              placeholder="Re-enter your password"
+              placeholder="비밀번호를 다시 입력하세요"
               error={errors.confirmPassword?.message}
               {...register('confirmPassword')}
             />
@@ -139,15 +139,15 @@ export default function RegisterPage() {
               className="w-full"
               isLoading={isLoading}
             >
-              Create Account
+              회원가입
             </Button>
           </form>
 
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
-              Already have an account?{' '}
+              이미 계정이 있으신가요?{' '}
               <Link href="/login" className="text-primary-600 hover:text-primary-700 font-medium">
-                Sign in
+                로그인
               </Link>
             </p>
           </div>

@@ -1,18 +1,23 @@
-FROM eclipse-temurin:21-jre-alpine
-
-RUN addgroup -S spring && adduser -S spring -G spring
-USER spring:spring
-
+FROM gradle:8.5-jdk17 AS build
 WORKDIR /app
 
-COPY build/libs/*.jar app.jar
+# Copy common library first
+COPY common/ /app/common/
+COPY settings.gradle /app/
+COPY build.gradle /app/
+
+# Copy investment-service
+COPY investment-service/build.gradle /app/investment-service/
+COPY investment-service/src /app/investment-service/src
+
+# Build
+RUN gradle :investment-service:build -x test --no-daemon
+
+FROM eclipse-temurin:17-jre-jammy
+WORKDIR /app
+
+COPY --from=build /app/investment-service/build/libs/*.jar app.jar
 
 EXPOSE 8084
 
-HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8084/invest/health || exit 1
-
-ENTRYPOINT ["java", \
-  "-Djava.security.egd=file:/dev/./urandom", \
-  "-XX:MaxRAMPercentage=75.0", \
-  "-jar", "app.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]

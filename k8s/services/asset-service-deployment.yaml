@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: asset-service
+  namespace: mybank
+  labels:
+    app: asset-service
+    tier: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: asset-service
+  template:
+    metadata:
+      labels:
+        app: asset-service
+        tier: backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8086"
+        prometheus.io/path: "/actuator/prometheus"
+    spec:
+      containers:
+      - name: asset-service
+        image: mybank/asset-service:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8086
+          name: http
+        env:
+        - name: MONGO_HOST
+          value: "mongodb"
+        - name: MONGO_USERNAME
+          value: "root"
+        - name: MONGO_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mongodb-secret
+              key: MONGO_INITDB_ROOT_PASSWORD
+        - name: REDIS_HOST
+          value: "redis"
+        - name: EUREKA_URI
+          value: "http://service-discovery:8761/eureka"
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8086
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8086
+          initialDelaySeconds: 30
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: asset-service
+  namespace: mybank
+  labels:
+    app: asset-service
+spec:
+  selector:
+    app: asset-service
+  ports:
+  - port: 8086
+    targetPort: 8086
+    protocol: TCP
+    name: http
+  type: ClusterIP

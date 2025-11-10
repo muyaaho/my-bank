@@ -4,24 +4,23 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
- * Investment transaction entity
+ * Investment Entity (embedded within InvestmentAccount)
+ * NOT a separate Document - managed by InvestmentAccount Aggregate
  */
-@Document(collection = "investments")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class Investment {
 
-    @Id
-    private String id;
+    @Builder.Default
+    private String id = UUID.randomUUID().toString();
 
     private String userId;
 
@@ -39,7 +38,8 @@ public class Investment {
 
     private String relatedPaymentId; // For round-up investments
 
-    private LocalDateTime investedAt;
+    @Builder.Default
+    private LocalDateTime investedAt = LocalDateTime.now();
 
     public enum InvestmentType {
         ROUNDUP, MANUAL, AUTO

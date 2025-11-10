@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { pfmApi } from '../api/endpoints';
+import { analyticsApi } from '../api/endpoints';
 
 export const useSpendingAnalysis = (daysBack = 30) => {
   return useQuery({
     queryKey: ['spending-analysis', daysBack],
     queryFn: async () => {
-      const response = await pfmApi.getSpendingAnalysis(daysBack);
+      const response = await analyticsApi.getSpendingAnalysis(daysBack);
       if (response.success) {
         return response.data;
       }

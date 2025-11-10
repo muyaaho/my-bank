@@ -45,24 +45,24 @@ export default function InvestmentPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Investments</h1>
-        <p className="text-gray-600 mt-2">Grow your wealth with smart savings</p>
+        <h1 className="text-2xl font-bold text-gray-900">투자</h1>
+        <p className="text-sm text-gray-600 mt-1">자동 투자로 자산을 늘려보세요</p>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-3">
         <Card>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Total Invested</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">
+              <p className="text-xs font-medium text-gray-600">총 투자금액</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">
                 {formatCurrency(investments?.totalInvested || 0)}
               </p>
             </div>
-            <div className="bg-green-100 p-3 rounded-full">
-              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-green-100 p-2.5 rounded-full">
+              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>
             </div>
@@ -72,57 +72,41 @@ export default function InvestmentPage() {
         <Card>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Round-up Savings</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">
+              <p className="text-xs font-medium text-gray-600">거스름돈 투자</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">
                 {formatCurrency(investments?.totalRoundedUp || 0)}
               </p>
             </div>
-            <div className="bg-blue-100 p-3 rounded-full">
-              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-blue-100 p-2.5 rounded-full">
+              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 8h6m-5 0a3 3 0 110 6H9l3 3m-3-6h6m6 1a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
           </div>
           <p className="text-xs text-gray-500 mt-2">
-            {investments?.totalRoundUpTransactions || 0} transactions
+            {investments?.totalRoundUpTransactions || 0}회 투자
           </p>
-        </Card>
-
-        <Card>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Active Investments</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">
-                {investments?.recentInvestments.length || 0}
-              </p>
-            </div>
-            <div className="bg-purple-100 p-3 rounded-full">
-              <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-          </div>
         </Card>
       </div>
 
       {/* Round-up Settings */}
-      <Card title="Round-up Savings" description="Automatically invest your spare change">
-        <div className="space-y-4">
-          <p className="text-gray-700">
-            Every time you make a purchase, we'll round up to the nearest dollar and invest the difference.
-            For example, a $4.30 purchase becomes $5.00, and $0.70 goes into your investment account.
+      <Card title="거스름돈 투자" description="자동으로 잔돈을 투자하세요">
+        <div className="space-y-3">
+          <p className="text-sm text-gray-700">
+            결제 시 금액을 천 원 단위로 올려서 거스름돈을 자동으로 투자합니다.
+            예: 3,450원 결제 시 550원이 자동 투자됩니다.
           </p>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Select Account for Round-up
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              투자 계좌 선택
             </label>
             <select
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               value={selectedAccountId}
               onChange={(e) => setSelectedAccountId(e.target.value)}
             >
-              <option value="">Choose an account</option>
+              <option value="">계좌 선택</option>
               {assets?.assets.map((asset) => (
                 <option key={asset.id} value={asset.id}>
                   {asset.accountName} - {formatCurrency(asset.balance)}
@@ -131,48 +115,50 @@ export default function InvestmentPage() {
             </select>
           </div>
 
-          <div className="flex gap-4">
+          <div className="flex gap-2">
             <Button
               onClick={() => handleToggleRoundUp(true)}
               isLoading={toggleLoading}
               disabled={!selectedAccountId}
+              className="flex-1"
             >
-              Enable Round-up
+              투자 시작
             </Button>
             <Button
               variant="danger"
               onClick={() => handleToggleRoundUp(false)}
               isLoading={toggleLoading}
               disabled={!selectedAccountId}
+              className="flex-1"
             >
-              Disable Round-up
+              투자 중단
             </Button>
           </div>
         </div>
       </Card>
 
       {/* Investment History */}
-      <Card title="Recent Investments" description="Your latest investment activities">
+      <Card title="최근 투자 내역" description="최근 투자 활동">
         {investments && investments.recentInvestments.length > 0 ? (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {investments.recentInvestments.map((investment) => (
               <div
                 key={investment.investmentId}
-                className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex items-center justify-between p-3 border border-gray-200 rounded-lg active:bg-gray-50 transition-colors"
               >
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <p className="font-medium text-gray-900">{investment.productName}</p>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${INVESTMENT_TYPE_COLORS[investment.investmentType]}`}>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <p className="font-medium text-sm text-gray-900 truncate">{investment.productName}</p>
+                    <span className={`px-1.5 py-0.5 rounded text-xs font-medium flex-shrink-0 ${INVESTMENT_TYPE_COLORS[investment.investmentType]}`}>
                       {INVESTMENT_TYPE_LABELS[investment.investmentType]}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-xs text-gray-500">
                     {formatDateTime(new Date(investment.investedAt))}
                   </p>
                 </div>
-                <div className="text-right">
-                  <p className="text-lg font-semibold text-green-600">
+                <div className="text-right flex-shrink-0 ml-2">
+                  <p className="text-base font-semibold text-green-600">
                     +{formatCurrency(investment.amount)}
                   </p>
                 </div>
@@ -180,35 +166,23 @@ export default function InvestmentPage() {
             ))}
           </div>
         ) : (
-          <p className="text-center text-gray-500 py-12">No investments yet</p>
+          <p className="text-center text-sm text-gray-500 py-8">투자 내역이 없습니다</p>
         )}
       </Card>
 
       {/* Investment Tips */}
-      <Card title="Investment Tips">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="p-4 bg-blue-50 rounded-lg">
-            <h4 className="font-semibold text-blue-900 mb-2">Start Small</h4>
-            <p className="text-sm text-blue-700">
-              Round-up savings let you invest without thinking about it. Small amounts add up over time!
+      <Card title="투자 팁">
+        <div className="grid grid-cols-1 gap-2">
+          <div className="p-3 bg-blue-50 rounded-lg">
+            <h4 className="font-semibold text-sm text-blue-900 mb-1">작게 시작하기</h4>
+            <p className="text-xs text-blue-700">
+              거스름돈 투자로 부담 없이 시작하세요. 작은 금액도 모이면 큰돈이 됩니다!
             </p>
           </div>
-          <div className="p-4 bg-green-50 rounded-lg">
-            <h4 className="font-semibold text-green-900 mb-2">Stay Consistent</h4>
-            <p className="text-sm text-green-700">
-              Regular investments, even small ones, can grow significantly with compound interest.
-            </p>
-          </div>
-          <div className="p-4 bg-purple-50 rounded-lg">
-            <h4 className="font-semibold text-purple-900 mb-2">Diversify</h4>
-            <p className="text-sm text-purple-700">
-              Don't put all your eggs in one basket. Spread your investments across different assets.
-            </p>
-          </div>
-          <div className="p-4 bg-yellow-50 rounded-lg">
-            <h4 className="font-semibold text-yellow-900 mb-2">Long-term Vision</h4>
-            <p className="text-sm text-yellow-700">
-              Investing is a marathon, not a sprint. Stay focused on your long-term goals.
+          <div className="p-3 bg-green-50 rounded-lg">
+            <h4 className="font-semibold text-sm text-green-900 mb-1">꾸준함 유지</h4>
+            <p className="text-xs text-green-700">
+              작은 금액이라도 꾸준히 투자하면 복리 효과로 크게 성장할 수 있습니다.
             </p>
           </div>
         </div>

@@ -129,6 +129,22 @@ public class AuthService {
         return buildLoginResponse(user, newAccessToken, refreshToken);
     }
 
+    /**
+     * Get current user information by user ID
+     */
+    public LoginResponse.UserInfo getCurrentUser(String userId) {
+        log.info("Getting user info for userId: {}", userId);
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException("USER_NOT_FOUND", "User not found"));
+
+        return LoginResponse.UserInfo.builder()
+                .id(user.getId())
+                .email(user.getEmail())
+                .name(user.getName())
+                .build();
+    }
+
     private void handleFailedLogin(User user) {
         user.setFailedLoginAttempts(user.getFailedLoginAttempts() + 1);
 

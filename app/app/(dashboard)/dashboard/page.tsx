@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query';
 import { Card } from '@/components/ui/Card';
 import { pfmApi } from '@/lib/api/endpoints';
 import { formatCurrency } from '@/lib/utils/format';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { TrendingUp, Wallet, CreditCard, Building2 } from 'lucide-react';
 import { AssetType } from '@/types/api';
 
@@ -55,129 +54,142 @@ export default function DashboardPage() {
     color: COLORS[item.assetType as keyof typeof COLORS],
   })) || [];
 
-  return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">대시보드</h1>
-        <p className="text-gray-600 mt-2">자산 현황을 한눈에 확인하세요</p>
-      </div>
+  // Get bank accounts only
+  const bankAccounts = assets?.assets.filter((asset) => asset.assetType === 'BANK') || [];
 
-      {/* Total Balance */}
+  return (
+    <div className="space-y-6">
+      {/* Total Balance Card */}
       <Card className="bg-gradient-to-br from-primary-500 to-primary-700 text-white">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-primary-100 text-sm">총 자산</p>
-            <h2 className="text-4xl font-bold mt-2">
+            <h2 className="text-3xl font-bold mt-2">
               {formatCurrency(assets?.totalBalance || 0)}
             </h2>
           </div>
-          <Wallet className="w-16 h-16 opacity-50" />
+          <Wallet className="w-12 h-12 opacity-50" />
         </div>
       </Card>
 
-      {/* Category Breakdown */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Pie Chart */}
-        <Card title="자산 분류">
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={chartData}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(value: number) => formatCurrency(value)} />
-            </PieChart>
-          </ResponsiveContainer>
-        </Card>
+      {/* Bank Accounts Section */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold text-gray-900">내 통장</h2>
+          <button className="text-sm text-primary-600 font-medium">
+            전체보기
+          </button>
+        </div>
 
-        {/* Category List */}
-        <Card title="카테고리별 상세">
-          <div className="space-y-4">
-            {assets?.categoryBreakdown.map((category) => {
-              const Icon = ASSET_ICONS[category.assetType as keyof typeof ASSET_ICONS];
-              return (
-                <div
-                  key={category.assetType}
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
-                >
-                  <div className="flex items-center">
-                    <div
-                      className="p-2 rounded-lg mr-4"
-                      style={{ backgroundColor: `${COLORS[category.assetType as keyof typeof COLORS]}20` }}
-                    >
-                      <Icon
-                        className="w-6 h-6"
-                        style={{ color: COLORS[category.assetType as keyof typeof COLORS] }}
-                      />
+        {bankAccounts.length > 0 ? (
+          <div className="space-y-3">
+            {bankAccounts.slice(0, 3).map((account) => (
+              <div
+                key={account.id}
+                className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center">
+                      <Building2 className="w-6 h-6 text-primary-600" />
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900">
-                        {getAssetTypeName(category.assetType)}
+                      <p className="font-semibold text-gray-900">
+                        {account.institutionName}
                       </p>
-                      <p className="text-sm text-gray-500">{category.count}개 계좌</p>
+                      <p className="text-sm text-gray-500">{account.accountName}</p>
                     </div>
                   </div>
-                  <p className="font-semibold text-gray-900">
-                    {formatCurrency(category.totalValue)}
-                  </p>
+                  <div className="text-right">
+                    <p className="font-bold text-gray-900">
+                      {formatCurrency(account.currentValue)}
+                    </p>
+                  </div>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
-        </Card>
+        ) : (
+          <div className="bg-gray-50 rounded-xl p-6 text-center">
+            <Building2 className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+            <p className="text-gray-500">등록된 은행 계좌가 없습니다</p>
+            <button className="mt-3 text-sm text-primary-600 font-medium">
+              계좌 연결하기
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Assets List */}
-      <Card title="보유 자산 목록">
-        <div className="space-y-3">
-          {assets?.assets.map((asset) => {
-            const Icon = ASSET_ICONS[asset.assetType as keyof typeof ASSET_ICONS];
+      {/* Asset Categories */}
+      <div>
+        <h2 className="text-lg font-bold text-gray-900 mb-4">자산 분류</h2>
+        <div className="grid grid-cols-2 gap-3">
+          {assets?.categoryBreakdown.map((category) => {
+            const Icon = ASSET_ICONS[category.assetType as keyof typeof ASSET_ICONS];
+            const totalBalance = assets?.totalBalance || 1;
+            const percentage = ((category.totalValue / totalBalance) * 100).toFixed(0);
+
             return (
               <div
-                key={asset.id}
-                className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                key={category.assetType}
+                className="bg-white rounded-xl p-4 border border-gray-200"
               >
-                <div className="flex items-center">
+                <div className="flex items-center mb-2">
                   <div
-                    className="p-2 rounded-lg mr-4"
-                    style={{ backgroundColor: `${COLORS[asset.assetType as keyof typeof COLORS]}20` }}
+                    className="p-2 rounded-lg mr-2"
+                    style={{ backgroundColor: `${COLORS[category.assetType as keyof typeof COLORS]}20` }}
                   >
                     <Icon
                       className="w-5 h-5"
-                      style={{ color: COLORS[asset.assetType as keyof typeof COLORS] }}
+                      style={{ color: COLORS[category.assetType as keyof typeof COLORS] }}
                     />
                   </div>
-                  <div>
-                    <p className="font-medium text-gray-900">{asset.accountName}</p>
-                    <p className="text-sm text-gray-500">{asset.institutionName}</p>
-                  </div>
+                  <span className="text-sm font-medium text-gray-700">
+                    {getAssetTypeName(category.assetType)}
+                  </span>
                 </div>
-                <div className="text-right">
-                  <p className="font-semibold text-gray-900">
-                    {formatCurrency(asset.currentValue)}
-                  </p>
-                  <p className="text-xs text-gray-500">{getAssetTypeName(asset.assetType)}</p>
-                </div>
+                <p className="text-lg font-bold text-gray-900">
+                  {formatCurrency(category.totalValue)}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {percentage}% · {category.count}개
+                </p>
               </div>
             );
           })}
-
-          {(!assets?.assets || assets.assets.length === 0) && (
-            <p className="text-center text-gray-500 py-8">등록된 자산이 없습니다.</p>
-          )}
         </div>
-      </Card>
+      </div>
+
+      {/* Recent Transactions or Quick Actions */}
+      <div>
+        <h2 className="text-lg font-bold text-gray-900 mb-4">빠른 메뉴</h2>
+        <div className="grid grid-cols-4 gap-3">
+          <button className="flex flex-col items-center p-3 bg-white rounded-xl border border-gray-200">
+            <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center mb-2">
+              <CreditCard className="w-6 h-6 text-primary-600" />
+            </div>
+            <span className="text-xs font-medium text-gray-700">송금</span>
+          </button>
+          <button className="flex flex-col items-center p-3 bg-white rounded-xl border border-gray-200">
+            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-2">
+              <TrendingUp className="w-6 h-6 text-green-600" />
+            </div>
+            <span className="text-xs font-medium text-gray-700">투자</span>
+          </button>
+          <button className="flex flex-col items-center p-3 bg-white rounded-xl border border-gray-200">
+            <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mb-2">
+              <Wallet className="w-6 h-6 text-purple-600" />
+            </div>
+            <span className="text-xs font-medium text-gray-700">계좌</span>
+          </button>
+          <button className="flex flex-col items-center p-3 bg-white rounded-xl border border-gray-200">
+            <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mb-2">
+              <Building2 className="w-6 h-6 text-orange-600" />
+            </div>
+            <span className="text-xs font-medium text-gray-700">연결</span>
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

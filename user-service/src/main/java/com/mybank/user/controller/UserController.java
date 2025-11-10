@@ -19,15 +19,15 @@ import java.util.Set;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/user")
+@RequestMapping({"/api/user", "/api/v1/user"})
 @RequiredArgsConstructor
 public class UserController {
 
     private final UserService userService;
 
-    @GetMapping("/profile")
-    public ResponseEntity<UserDto> getMyProfile() {
-        String userId = getCurrentUserId();
+    @GetMapping({"/me", "/profile"})
+    public ResponseEntity<UserDto> getMyProfile(@RequestHeader("X-User-Id") String userId) {
+        log.info("Get current user request for userId: {}", userId);
         UserDto user = userService.getUserById(userId);
         return ResponseEntity.ok(user);
     }
@@ -75,5 +75,13 @@ public class UserController {
             return ((com.mybank.common.security.UserPrincipal) authentication.getPrincipal()).getUserId();
         }
         throw new RuntimeException("User not authenticated");
+    }
+
+    // Added X-User-Id parameter method for header-based authentication
+    private String getUserIdFromHeader(String userId) {
+        if (userId == null || userId.isEmpty()) {
+            throw new RuntimeException("User ID not provided in header");
+        }
+        return userId;
     }
 }

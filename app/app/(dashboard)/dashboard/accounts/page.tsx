@@ -30,74 +30,70 @@ export default function AccountsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Transactions</h1>
-        <p className="text-gray-600 mt-2">View your transaction history</p>
+        <h1 className="text-2xl font-bold text-gray-900">거래 내역</h1>
+        <p className="text-sm text-gray-600 mt-1">최근 거래를 확인하세요</p>
       </div>
 
-      <Card title="Transaction History">
+      <Card title="거래 내역">
         {data && data.transactions.length > 0 ? (
           <>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {data.transactions.map((transaction) => (
                 <div
                   key={transaction.transactionId}
-                  className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="flex items-center justify-between p-3 border border-gray-200 rounded-lg active:bg-gray-50 transition-colors"
                 >
-                  <div className="flex items-center space-x-4">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${TRANSACTION_COLORS[transaction.type]}`}>
-                      <span className="text-lg font-bold">
+                  <div className="flex items-center space-x-3 flex-1 min-w-0">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${TRANSACTION_COLORS[transaction.type]}`}>
+                      <span className="text-base font-bold">
                         {TRANSACTION_ICONS[transaction.type]}
                       </span>
                     </div>
-                    <div>
-                      <p className="font-medium text-gray-900">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm text-gray-900 truncate">
                         {transaction.merchantName || transaction.category}
                       </p>
-                      <p className="text-sm text-gray-600">{transaction.description}</p>
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-gray-500">
                         {formatDate(new Date(transaction.transactionDate))}
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className={`text-lg font-semibold ${
+                  <div className="text-right flex-shrink-0 ml-2">
+                    <p className={`text-base font-semibold ${
                       transaction.type === 'DEPOSIT' ? 'text-green-600' : 'text-red-600'
                     }`}>
                       {transaction.type === 'DEPOSIT' ? '+' : '-'}
                       {formatCurrency(transaction.amount)}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Balance: {formatCurrency(transaction.balance)}
                     </p>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="flex justify-center items-center space-x-4 mt-6">
+            <div className="flex justify-center items-center space-x-3 mt-4">
               <button
                 onClick={() => setPage((p) => Math.max(0, p - 1))}
                 disabled={page === 0}
-                className="px-4 py-2 bg-gray-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300"
+                className="px-3 py-2 text-sm bg-gray-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed active:bg-gray-300"
               >
-                Previous
+                이전
               </button>
-              <span className="text-gray-600">
-                Page {page + 1} of {data.totalPages}
+              <span className="text-sm text-gray-600">
+                {page + 1} / {data.totalPages}
               </span>
               <button
                 onClick={() => setPage((p) => Math.min(data.totalPages - 1, p + 1))}
                 disabled={page >= data.totalPages - 1}
-                className="px-4 py-2 bg-gray-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300"
+                className="px-3 py-2 text-sm bg-gray-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed active:bg-gray-300"
               >
-                Next
+                다음
               </button>
             </div>
           </>
         ) : (
-          <p className="text-center text-gray-500 py-12">No transactions found</p>
+          <p className="text-center text-sm text-gray-500 py-8">거래 내역이 없습니다</p>
         )}
       </Card>
     </div>

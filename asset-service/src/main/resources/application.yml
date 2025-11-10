@@ -1,0 +1,38 @@
+server:
+  port: 8086
+
+spring:
+  application:
+    name: asset-service
+
+  data:
+    mongodb:
+      uri: mongodb://${MONGO_HOST:localhost}:27017/mybank_asset
+      username: ${MONGO_USERNAME:root}
+      password: ${MONGO_PASSWORD:rootpassword}
+      authentication-database: admin
+
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: 6379
+    timeout: 3000ms
+
+  cloud:
+    discovery:
+      enabled: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+logging:
+  level:
+    com.mybank.asset: DEBUG
+    org.springframework.data.mongodb: DEBUG
+    org.springframework.cache: DEBUG

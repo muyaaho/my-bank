@@ -14,8 +14,8 @@ import { useAuthStore } from '@/stores/authStore';
 import Link from 'next/link';
 
 const loginSchema = z.object({
-  email: z.string().email('Valid email is required'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  email: z.string().email('올바른 이메일을 입력해주세요'),
+  password: z.string().min(8, '비밀번호는 최소 8자 이상이어야 합니다'),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
@@ -56,10 +56,10 @@ export default function LoginPage() {
         // Redirect to dashboard
         router.push('/dashboard');
       } else {
-        setError(response.error || 'Login failed');
+        setError(response.error || '로그인에 실패했습니다');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
+      setError(err instanceof Error ? err.message : '로그인에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setIsLoading(false);
     }
@@ -74,11 +74,11 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">MyBank 360</h1>
-          <p className="text-gray-600">Sign in to manage your finances</p>
+    <div className="min-h-screen flex flex-col justify-center bg-gradient-to-br from-primary-50 to-primary-100 px-5 py-8">
+      <div className="w-full">
+        <div className="text-center mb-10">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">MyBank 360</h1>
+          <p className="text-sm text-gray-600">똑똑한 금융생활을 시작하세요</p>
         </div>
 
         <Card>
@@ -90,17 +90,17 @@ export default function LoginPage() {
             )}
 
             <Input
-              label="Email"
+              label="이메일"
               type="email"
-              placeholder="you@example.com"
+              placeholder="example@mybank.com"
               error={errors.email?.message}
               {...register('email')}
             />
 
             <Input
-              label="Password"
+              label="비밀번호"
               type="password"
-              placeholder="Enter your password"
+              placeholder="비밀번호를 입력하세요"
               error={errors.password?.message}
               {...register('password')}
             />
@@ -110,7 +110,7 @@ export default function LoginPage() {
               className="w-full"
               isLoading={isLoading}
             >
-              Sign In
+              로그인
             </Button>
           </form>
 
@@ -120,7 +120,7 @@ export default function LoginPage() {
                 <div className="w-full border-t border-gray-300"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Or continue with</span>
+                <span className="px-2 bg-white text-gray-500">또는</span>
               </div>
             </div>
 
@@ -132,15 +132,15 @@ export default function LoginPage() {
               <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 3c5.799 0 10.5 3.664 10.5 8.185 0 4.52-4.701 8.184-10.5 8.184a13.5 13.5 0 01-1.727-.11l-4.408 2.883c-.501.265-.678.236-.472-.413l.892-3.678c-2.88-1.46-4.785-3.99-4.785-6.866C1.5 6.665 6.201 3 12 3z"/>
               </svg>
-              Sign in with Kakao
+              카카오로 시작하기
             </Button>
           </div>
 
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
-              Don&apos;t have an account?{' '}
+              계정이 없으신가요?{' '}
               <Link href="/register" className="text-primary-600 hover:text-primary-700 font-medium">
-                Sign up
+                회원가입
               </Link>
             </p>
           </div>

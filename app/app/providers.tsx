@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { apiClient } from '@/lib/api/client';
 import { useAuthStore } from '@/stores/authStore';
 import { authApi } from '@/lib/api/endpoints';
+import { AppLayout } from '@/components/layout/AppLayout';
 
 function AuthProvider({ children }: { children: React.ReactNode }) {
   const { setUser, clearUser, clearTokens } = useAuthStore();
@@ -72,7 +73,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        {children}
+        <AppLayout>
+          {children}
+        </AppLayout>
       </AuthProvider>
     </QueryClientProvider>
   );

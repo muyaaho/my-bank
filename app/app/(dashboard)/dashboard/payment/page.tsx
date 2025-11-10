@@ -60,30 +60,30 @@ export default function PaymentPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Payments</h1>
-        <p className="text-gray-600 mt-2">Transfer money between accounts</p>
+        <h1 className="text-2xl font-bold text-gray-900">송금</h1>
+        <p className="text-sm text-gray-600 mt-1">빠르고 안전하게 송금하세요</p>
       </div>
 
       {showSuccess && (
-        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
-          Transfer completed successfully!
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
+          송금이 완료되었습니다!
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card title="New Transfer" description="Send money to another account">
+      <div className="space-y-4">
+        <Card title="송금하기" description="다른 계좌로 송금">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                From Account
+                출금 계좌
               </label>
               <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                 {...register('fromAccountId')}
               >
-                <option value="">Select account</option>
+                <option value="">계좌 선택</option>
                 {assets?.assets.map((asset) => (
                   <option key={asset.id} value={asset.id}>
                     {asset.accountName} - {formatCurrency(asset.balance)}
@@ -91,43 +91,43 @@ export default function PaymentPage() {
                 ))}
               </select>
               {errors.fromAccountId && (
-                <p className="mt-1 text-sm text-red-600">{errors.fromAccountId.message}</p>
+                <p className="mt-1 text-xs text-red-600">{errors.fromAccountId.message}</p>
               )}
             </div>
 
             <Input
-              label="Recipient Account Number"
-              placeholder="Enter account number"
+              label="받는 계좌번호"
+              placeholder="계좌번호 입력"
               error={errors.toAccountId?.message}
               {...register('toAccountId')}
             />
 
             <Input
-              label="Recipient Name"
-              placeholder="Enter recipient name"
+              label="받는 분"
+              placeholder="이름 입력"
               error={errors.recipientName?.message}
               {...register('recipientName')}
             />
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Amount
+                금액
               </label>
               <input
                 type="number"
                 step="0.01"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="0.00"
+                className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="0"
                 {...register('amount', { valueAsNumber: true })}
               />
               {errors.amount && (
-                <p className="mt-1 text-sm text-red-600">{errors.amount.message}</p>
+                <p className="mt-1 text-xs text-red-600">{errors.amount.message}</p>
               )}
             </div>
 
             <Input
-              label="Description (Optional)"
-              placeholder="What's this for?"
+              label="메모 (선택)"
+              placeholder="메모 입력"
               {...register('description')}
             />
 
@@ -136,32 +136,32 @@ export default function PaymentPage() {
               className="w-full"
               isLoading={transferMutation.isPending}
             >
-              Transfer Money
+              송금하기
             </Button>
           </form>
         </Card>
 
-        <Card title="Recent Payments" description="Your latest transactions">
+        <Card title="최근 송금 내역" description="최근 송금 기록">
           {paymentHistory && paymentHistory.payments.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {paymentHistory.payments.map((payment) => (
                 <div
                   key={payment.paymentId}
-                  className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="p-3 border border-gray-200 rounded-lg active:bg-gray-50 transition-colors"
                 >
                   <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <p className="font-medium text-gray-900">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm text-gray-900">
                         {payment.recipientName}
                       </p>
-                      <p className="text-sm text-gray-600">{payment.message}</p>
+                      <p className="text-xs text-gray-600 truncate">{payment.message}</p>
                     </div>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[payment.status]}`}>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ml-2 ${STATUS_COLORS[payment.status]}`}>
                       {payment.status}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <p className="text-lg font-semibold text-gray-900">
+                    <p className="text-base font-semibold text-gray-900">
                       {formatCurrency(payment.amount)}
                     </p>
                     <p className="text-xs text-gray-500">
@@ -172,7 +172,7 @@ export default function PaymentPage() {
               ))}
             </div>
           ) : (
-            <p className="text-center text-gray-500 py-12">No payment history</p>
+            <p className="text-center text-sm text-gray-500 py-8">송금 내역이 없습니다</p>
           )}
         </Card>
       </div>

@@ -27,27 +27,25 @@ export const authApi = {
     apiClient.post<{ accessToken: string; refreshToken: string }>('/api/v1/auth/refresh', { refreshToken }),
 
   getCurrentUser: () =>
-    apiClient.get<User>('/api/v1/auth/me'),
+    apiClient.get<User>('/api/v1/user/me'),
 
   kakaoLogin: (code: string) =>
     apiClient.post<LoginResponse>('/api/v1/auth/kakao/callback', { code }),
 };
 
-// PFM endpoints
-export const pfmApi = {
+// Asset endpoints (DDD-compliant)
+export const assetApi = {
   getAssets: () =>
-    apiClient.get<AssetSummaryResponse>('/api/v1/pfm/assets'),
-
-  getTransactions: (params?: { page?: number; size?: number; accountId?: string }) =>
-    apiClient.get<{ transactions: Transaction[]; totalPages: number; totalElements: number }>(
-      `/api/v1/pfm/transactions${params ? `?${new URLSearchParams(params as any).toString()}` : ''}`
-    ),
-
-  getSpendingAnalysis: (daysBack = 30) =>
-    apiClient.get<SpendingAnalysisResponse>(`/api/v1/pfm/spending/analysis?daysBack=${daysBack}`),
+    apiClient.get<AssetSummaryResponse>('/api/v1/asset/summary'),
 
   syncAssets: () =>
-    apiClient.post('/api/v1/pfm/assets/sync'),
+    apiClient.post('/api/v1/asset/sync'),
+};
+
+// Analytics endpoints (DDD-compliant)
+export const analyticsApi = {
+  getSpendingAnalysis: (daysBack = 30) =>
+    apiClient.get<SpendingAnalysisResponse>(`/api/v1/analytics/spending?daysBack=${daysBack}`),
 };
 
 // Payment endpoints

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { pfmApi } from '../api/endpoints';
+import { assetApi } from '../api/endpoints';
 import { useAssetStore } from '@/stores/assetStore';
 
 export const useAssets = () => {
@@ -10,7 +10,7 @@ export const useAssets = () => {
     queryFn: async () => {
       setLoading(true);
       try {
-        const response = await pfmApi.getAssets();
+        const response = await assetApi.getAssets();
         if (response.success) {
           setAssets(response.data);
           return response.data;
@@ -33,7 +33,7 @@ export const useSyncAssets = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () => pfmApi.syncAssets(),
+    mutationFn: () => assetApi.syncAssets(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assets'] });
     },

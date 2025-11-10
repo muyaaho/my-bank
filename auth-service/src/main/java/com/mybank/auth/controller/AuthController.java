@@ -53,6 +53,14 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success(response, "Token refreshed successfully"));
     }
 
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<LoginResponse.UserInfo>> getCurrentUser(
+            @RequestHeader("X-User-Id") String userId) {
+        log.info("Get current user request for userId: {}", userId);
+        LoginResponse.UserInfo userInfo = authService.getCurrentUser(userId);
+        return ResponseEntity.ok(ApiResponse.success(userInfo, "User retrieved successfully"));
+    }
+
     @GetMapping("/health")
     public ResponseEntity<ApiResponse<String>> health() {
         return ResponseEntity.ok(ApiResponse.success("Auth Service is healthy"));

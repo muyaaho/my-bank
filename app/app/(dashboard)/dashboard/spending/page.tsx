@@ -32,140 +32,125 @@ export default function SpendingPage() {
   })) || [];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Spending Analytics</h1>
-          <p className="text-gray-600 mt-2">Understand your spending patterns</p>
-        </div>
-        <div>
-          <select
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-            value={daysBack}
-            onChange={(e) => setDaysBack(Number(e.target.value))}
-          >
-            <option value={7}>Last 7 days</option>
-            <option value={30}>Last 30 days</option>
-            <option value={90}>Last 90 days</option>
-            <option value={365}>Last year</option>
-          </select>
-        </div>
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">소비 분석</h1>
+        <p className="text-sm text-gray-600 mt-1">소비 패턴을 확인하세요</p>
+      </div>
+
+      <div>
+        <select
+          className="w-full px-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+          value={daysBack}
+          onChange={(e) => setDaysBack(Number(e.target.value))}
+        >
+          <option value={7}>최근 7일</option>
+          <option value={30}>최근 30일</option>
+          <option value={90}>최근 90일</option>
+          <option value={365}>최근 1년</option>
+        </select>
       </div>
 
       <Card>
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-gray-600">Total Spending</p>
-            <p className="text-4xl font-bold text-gray-900 mt-2">
+            <p className="text-xs font-medium text-gray-600">총 소비금액</p>
+            <p className="text-3xl font-bold text-gray-900 mt-1">
               {formatCurrency(spending?.totalSpending || 0)}
             </p>
-            <p className="text-sm text-gray-500 mt-1">{spending?.period}</p>
+            <p className="text-xs text-gray-500 mt-1">{spending?.period}</p>
           </div>
-          <div className="bg-red-100 p-4 rounded-full">
-            <svg className="w-12 h-12 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="bg-red-100 p-3 rounded-full">
+            <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
             </svg>
           </div>
         </div>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card title="Spending by Category" description="Bar chart view">
-          {categoryChartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={categoryChartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
-                <YAxis />
-                <Tooltip 
-                  formatter={(value) => formatCurrency(Number(value))}
-                />
-                <Bar dataKey="amount">
-                  {categoryChartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <p className="text-center text-gray-500 py-12">No spending data available</p>
-          )}
-        </Card>
-
-        <Card title="Category Distribution" description="Percentage breakdown">
-          {pieChartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={pieChartData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {pieChartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <p className="text-center text-gray-500 py-12">No data available</p>
-          )}
-        </Card>
-      </div>
-
-      <Card title="Category Details" description="Detailed breakdown of your spending">
+      <Card title="카테고리별 소비" description="막대 그래프">
         {categoryChartData.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Category</th>
-                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Amount</th>
-                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Transactions</th>
-                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Average</th>
-                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">% of Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {categoryChartData.map((category, index) => {
-                  const percentage = ((category.amount / (spending?.totalSpending || 1)) * 100).toFixed(1);
-                  return (
-                    <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-3 px-4">
-                        <div className="flex items-center">
-                          <div
-                            className="w-3 h-3 rounded-full mr-3"
-                            style={{ backgroundColor: category.color }}
-                          ></div>
-                          <span className="font-medium text-gray-900">{category.name}</span>
-                        </div>
-                      </td>
-                      <td className="text-right py-3 px-4 font-semibold text-gray-900">
-                        {formatCurrency(category.amount)}
-                      </td>
-                      <td className="text-right py-3 px-4 text-gray-600">
-                        {category.count}
-                      </td>
-                      <td className="text-right py-3 px-4 text-gray-600">
-                        {formatCurrency(category.average)}
-                      </td>
-                      <td className="text-right py-3 px-4 text-gray-600">
-                        {percentage}%
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <ResponsiveContainer width="100%" height={250}>
+            <BarChart data={categoryChartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} style={{ fontSize: '11px' }} />
+              <YAxis style={{ fontSize: '11px' }} />
+              <Tooltip
+                formatter={(value) => formatCurrency(Number(value))}
+                contentStyle={{ fontSize: '12px' }}
+              />
+              <Bar dataKey="amount">
+                {categoryChartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <p className="text-center text-sm text-gray-500 py-8">소비 데이터가 없습니다</p>
+        )}
+      </Card>
+
+      <Card title="카테고리 분포" description="비율 차트">
+        {pieChartData.length > 0 ? (
+          <ResponsiveContainer width="100%" height={250}>
+            <PieChart>
+              <Pie
+                data={pieChartData}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                outerRadius={70}
+                fill="#8884d8"
+                dataKey="value"
+                style={{ fontSize: '11px' }}
+              >
+                {pieChartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip
+                formatter={(value) => formatCurrency(Number(value))}
+                contentStyle={{ fontSize: '12px' }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        ) : (
+          <p className="text-center text-sm text-gray-500 py-8">데이터가 없습니다</p>
+        )}
+      </Card>
+
+      <Card title="카테고리 상세" description="상세한 소비 내역">
+        {categoryChartData.length > 0 ? (
+          <div className="space-y-2">
+            {categoryChartData.map((category, index) => {
+              const percentage = ((category.amount / (spending?.totalSpending || 1)) * 100).toFixed(0);
+              return (
+                <div key={index} className="p-3 border border-gray-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center flex-1 min-w-0">
+                      <div
+                        className="w-3 h-3 rounded-full mr-2 flex-shrink-0"
+                        style={{ backgroundColor: category.color }}
+                      ></div>
+                      <span className="font-medium text-sm text-gray-900 truncate">{category.name}</span>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-900 ml-2 flex-shrink-0">
+                      {formatCurrency(category.amount)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-xs text-gray-600 ml-5">
+                    <span>{category.count}건</span>
+                    <span>평균 {formatCurrency(category.average)}</span>
+                    <span>{percentage}%</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ) : (
-          <p className="text-center text-gray-500 py-8">No category data available</p>
+          <p className="text-center text-sm text-gray-500 py-8">카테고리 데이터가 없습니다</p>
         )}
       </Card>
     </div>

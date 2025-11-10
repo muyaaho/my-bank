@@ -6,7 +6,8 @@ include 'api-gateway'
 // Business microservices
 include 'auth-service'
 include 'user-service'
-include 'pfm-core-service'
+include 'asset-service'
+include 'analytics-service'
 include 'payment-service'
 include 'investment-service'
 
