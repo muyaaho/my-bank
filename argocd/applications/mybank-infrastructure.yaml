@@ -1,0 +1,79 @@
+# ArgoCD Application for MyBank Infrastructure
+# This configures ArgoCD to automatically deploy and sync the infrastructure chart
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mybank-infrastructure
+  namespace: argocd
+  # Finalizer ensures proper cleanup
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  labels:
+    tier: infrastructure
+    environment: development
+spec:
+  # Project (use 'default' or create custom project)
+  project: default
+
+  # Source: Git repository and path
+  source:
+    # IMPORTANT: Change this to your actual Git repository URL
+    repoURL: https://github.com/your-org/mybank.git
+    targetRevision: HEAD  # or specific branch/tag
+    path: helm/infrastructure
+
+    # Helm-specific configuration
+    helm:
+      releaseName: mybank-infrastructure
+      valueFiles:
+        - values.yaml
+      # Override values for environment
+      values: |
+        global:
+          namespace: mybank
+          environment: development
+        postgres:
+          auth:
+            replicas: 1
+          user:
+            replicas: 1
+        mongodb:
+          replicas: 1
+        redis:
+          replicas: 1
+        kafka:
+          replicas: 1
+
+  # Destination: Where to deploy
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: mybank
+
+  # Sync policy
+  syncPolicy:
+    # Automated sync (GitOps!)
+    automated:
+      prune: true      # Delete resources that are no longer in Git
+      selfHeal: true   # Auto-correct drift (if someone manually changes k8s)
+      allowEmpty: false
+
+    # Sync options
+    syncOptions:
+      - CreateNamespace=true  # Auto-create namespace if it doesn't exist
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true  # Prune resources last (after new resources are created)
+
+    # Retry configuration
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+  # Health assessment
+  ignoreDifferences: []
+
+  # Revisions to keep
+  revisionHistoryLimit: 10

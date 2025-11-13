@@ -1,0 +1,195 @@
+# Helmfile for MyBank - Declarative Helm Chart Management
+# Usage:
+#   helmfile sync                    # Deploy all charts
+#   helmfile -e dev sync             # Deploy with dev environment
+#   helmfile -l tier=infrastructure sync  # Deploy only infrastructure
+#   helmfile destroy                 # Remove all releases
+
+# Helm repositories (if using remote charts)
+repositories: []
+
+# Environment configuration
+environments:
+  # Local Kind cluster
+  dev:
+    values:
+      - environment: development
+      - namespace: mybank
+      - replicas: 1
+      - imagePullPolicy: IfNotPresent
+      - persistence:
+          enabled: true
+      - istio:
+          enabled: true
+
+  # Staging environment (future)
+  staging:
+    values:
+      - environment: staging
+      - namespace: mybank-staging
+      - replicas: 2
+      - imagePullPolicy: Always
+      - persistence:
+          enabled: true
+      - istio:
+          enabled: true
+
+  # Production environment (future)
+  prod:
+    values:
+      - environment: production
+      - namespace: mybank-prod
+      - replicas: 3
+      - imagePullPolicy: Always
+      - persistence:
+          enabled: true
+      - istio:
+          enabled: true
+
+# Helm defaults applied to all releases
+helmDefaults:
+  createNamespace: true
+  wait: true
+  timeout: 600
+  atomic: true
+  cleanupOnFail: true
+  force: false
+
+# Releases (Helm charts)
+releases:
+  # 1. Infrastructure Layer
+  # Deploy databases, cache, message queue first
+  - name: mybank-infrastructure
+    namespace: '{{ .Values.namespace | default "mybank" }}'
+    chart: ./helm/infrastructure
+    labels:
+      tier: infrastructure
+      layer: data
+    values:
+      - ./helm/infrastructure/values.yaml
+      - global:
+          namespace: '{{ .Values.namespace | default "mybank" }}'
+          environment: '{{ .Values.environment | default "development" }}'
+      - postgres:
+          auth:
+            replicas: '{{ .Values.replicas | default 1 }}'
+            persistence:
+              enabled: '{{ .Values.persistence.enabled | default true }}'
+          user:
+            replicas: '{{ .Values.replicas | default 1 }}'
+            persistence:
+              enabled: '{{ .Values.persistence.enabled | default true }}'
+      - mongodb:
+          replicas: '{{ .Values.replicas | default 1 }}'
+          persistence:
+            enabled: '{{ .Values.persistence.enabled | default true }}'
+      - redis:
+          replicas: '{{ .Values.replicas | default 1 }}'
+      - kafka:
+          replicas: '{{ .Values.replicas | default 1 }}'
+          persistence:
+            enabled: '{{ .Values.persistence.enabled | default true }}'
+    # Wait for infrastructure to be ready before deploying services
+    hooks:
+      - events: ["postsync"]
+        showlogs: true
+        command: "bash"
+        args:
+          - "-c"
+          - |
+            echo "Waiting for infrastructure pods to be ready..."
+            kubectl wait --for=condition=ready pod \
+              -l tier=infrastructure \
+              -n '{{ .Values.namespace | default "mybank" }}' \
+              --timeout=300s || true
+
+  # 2. Services Layer
+  # Deploy microservices after infrastructure is ready
+  - name: mybank-services
+    namespace: '{{ .Values.namespace | default "mybank" }}'
+    chart: ./helm/services
+    labels:
+      tier: backend
+      layer: application
+    values:
+      - ./helm/services/values.yaml
+      - global:
+          namespace: '{{ .Values.namespace | default "mybank" }}'
+          environment: '{{ .Values.environment | default "development" }}'
+          imagePullPolicy: '{{ .Values.imagePullPolicy | default "IfNotPresent" }}'
+      - common:
+          replicas: '{{ .Values.replicas | default 1 }}'
+      - services:
+          apiGateway:
+            replicas: '{{ .Values.replicas | default 2 }}'
+          authService:
+            replicas: '{{ .Values.replicas | default 2 }}'
+          userService:
+            replicas: '{{ .Values.replicas | default 2 }}'
+          pfmCoreService:
+            replicas: '{{ .Values.replicas | default 2 }}'
+          paymentService:
+            replicas: '{{ .Values.replicas | default 2 }}'
+          investmentService:
+            replicas: '{{ .Values.replicas | default 2 }}'
+      - istio:
+          enabled: '{{ .Values.istio.enabled | default true }}'
+    # Services depend on infrastructure
+    needs:
+      - mybank-infrastructure
+    hooks:
+      - events: ["postsync"]
+        showlogs: true
+        command: "bash"
+        args:
+          - "-c"
+          - |
+            echo "Waiting for service pods to be ready..."
+            kubectl wait --for=condition=ready pod \
+              -l tier=backend \
+              -n '{{ .Values.namespace | default "mybank" }}' \
+              --timeout=300s || true
+
+  # 3. Frontend Layer
+  # Deploy frontend after services are ready
+  - name: mybank-frontend
+    namespace: '{{ .Values.namespace | default "mybank" }}'
+    chart: ./helm/frontend
+    labels:
+      tier: frontend
+      layer: presentation
+    values:
+      - ./helm/frontend/values.yaml
+      - global:
+          namespace: '{{ .Values.namespace | default "mybank" }}'
+          imagePullPolicy: '{{ .Values.imagePullPolicy | default "IfNotPresent" }}'
+      - frontend:
+          replicas: '{{ .Values.replicas | default 2 }}'
+          env:
+            NODE_ENV: '{{ .Values.environment | default "development" }}'
+            NEXT_PUBLIC_API_URL: 'https://api.mybank.com'
+      - istio:
+          enabled: '{{ .Values.istio.enabled | default true }}'
+    # Frontend depends on services
+    needs:
+      - mybank-services
+    hooks:
+      - events: ["postsync"]
+        showlogs: true
+        command: "bash"
+        args:
+          - "-c"
+          - |
+            echo "Waiting for frontend pods to be ready..."
+            kubectl wait --for=condition=ready pod \
+              -l tier=frontend \
+              -n '{{ .Values.namespace | default "mybank" }}' \
+              --timeout=300s || true
+            echo ""
+            echo "✅ MyBank deployment complete!"
+            echo ""
+            echo "Access URLs:"
+            echo "  Frontend: https://app.mybank.com (or http://localhost:30000)"
+            echo "  API: https://api.mybank.com"
+            echo ""
+            echo "Check status: kubectl get pods -n mybank"

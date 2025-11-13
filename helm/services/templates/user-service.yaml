@@ -1,0 +1,81 @@
+{{- if .Values.services.userService.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.services.userService.name }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: {{ .Values.services.userService.name }}
+    tier: backend
+    {{- include "services.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.services.userService.port }}
+      targetPort: {{ .Values.services.userService.port }}
+      protocol: TCP
+      name: http
+  selector:
+    app: {{ .Values.services.userService.name }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.services.userService.name }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: {{ .Values.services.userService.name }}
+    tier: backend
+    {{- include "services.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.services.userService.replicas | default .Values.common.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Values.services.userService.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.services.userService.name }}
+        tier: backend
+        version: {{ .Values.services.userService.image.tag }}
+      {{- if .Values.istio.enabled }}
+      annotations:
+        sidecar.istio.io/inject: "{{ .Values.istio.sidecarInjection }}"
+      {{- end }}
+    spec:
+      containers:
+        - name: {{ .Values.services.userService.name }}
+          image: "{{ .Values.services.userService.image.repository }}:{{ .Values.services.userService.image.tag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.services.userService.port }}
+              name: http
+          env:
+            {{- range $key, $value := .Values.services.userService.env }}
+            - name: {{ $key }}
+              value: {{ tpl $value $ | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.common.resources | nindent 12 }}
+          {{- if .Values.common.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: {{ .Values.services.userService.port }}
+            initialDelaySeconds: {{ .Values.common.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.common.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.common.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.common.livenessProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.common.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: {{ .Values.services.userService.port }}
+            initialDelaySeconds: {{ .Values.common.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.common.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.common.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.common.readinessProbe.failureThreshold }}
+          {{- end }}
+{{- end }}

@@ -27,6 +27,7 @@ spec:
               protocol: TCP
           envFrom:
             - configMapRef:
+                name: app-config            - configMapRef:
                 name: common-config
             - configMapRef:
                 name: pfm-core-service-config

@@ -1,0 +1,24 @@
+# ArgoCD Installation for MyBank
+# This file installs ArgoCD in the cluster
+#
+# Usage:
+#   kubectl create namespace argocd
+#   kubectl apply -f argocd/install.yaml -n argocd
+#
+# Access ArgoCD UI:
+#   kubectl port-forward svc/argocd-server -n argocd 8080:443
+#   Username: admin
+#   Password: kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}" | base64 -d
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argocd
+---
+# Use official ArgoCD installation manifest
+# This will be applied via: kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+#
+# Or for production with HA:
+# kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/ha/install.yaml
+#
+# Note: The actual installation will be done via the Makefile command: make argocd-install

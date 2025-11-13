@@ -1,0 +1,38 @@
+# ArgoCD App of Apps Pattern
+# This is a meta-application that manages all MyBank applications
+# Deploy this single file to deploy everything!
+#
+# Usage:
+#   kubectl apply -f argocd/applications/app-of-apps.yaml
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mybank-app-of-apps
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/your-org/mybank.git
+    targetRevision: HEAD
+    path: argocd/applications
+    directory:
+      recurse: false  # Don't include this file itself
+      include: 'mybank-*.yaml'  # Only include mybank-* application files
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+
+    syncOptions:
+      - CreateNamespace=true
+
+  revisionHistoryLimit: 10

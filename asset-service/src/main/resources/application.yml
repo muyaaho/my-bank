@@ -7,14 +7,16 @@ spring:
 
   data:
     mongodb:
-      uri: mongodb://${MONGO_HOST:localhost}:27017/mybank_asset
-      username: ${MONGO_USERNAME:root}
-      password: ${MONGO_PASSWORD:rootpassword}
-      authentication-database: admin
+      host: ${MONGO_HOST:localhost}
+      port: ${MONGO_PORT:27017}
+      database: mybank_asset
+      username: ${SPRING_DATA_MONGODB_USERNAME:mybank}
+      password: ${SPRING_DATA_MONGODB_PASSWORD:mybank123}
+      authentication-database: ${SPRING_DATA_MONGODB_AUTHENTICATION_DATABASE:admin}
 
   redis:
     host: ${REDIS_HOST:localhost}
-    port: 6379
+    port: ${REDIS_PORT:6379}
     timeout: 3000ms
 
   cloud:
@@ -26,6 +28,9 @@ management:
     web:
       exposure:
         include: health,info,prometheus,metrics
+  health:
+    redis:
+      enabled: false
   metrics:
     export:
       prometheus:

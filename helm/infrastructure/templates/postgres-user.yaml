@@ -1,0 +1,100 @@
+{{- if .Values.postgres.enabled }}
+{{- if .Values.postgres.user.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.postgres.user.name }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: {{ .Values.postgres.user.name }}
+    tier: infrastructure
+    {{- include "infrastructure.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.postgres.user.port }}
+      targetPort: 5432
+      protocol: TCP
+      name: postgres
+  selector:
+    app: {{ .Values.postgres.user.name }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Values.postgres.user.name }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: {{ .Values.postgres.user.name }}
+    tier: infrastructure
+    {{- include "infrastructure.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ .Values.postgres.user.name }}
+  replicas: {{ .Values.postgres.user.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Values.postgres.user.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.postgres.user.name }}
+        tier: infrastructure
+    spec:
+      containers:
+        - name: postgres
+          image: "{{ .Values.postgres.user.image.repository }}:{{ .Values.postgres.user.image.tag }}"
+          imagePullPolicy: {{ .Values.postgres.user.image.pullPolicy }}
+          ports:
+            - containerPort: 5432
+              name: postgres
+          env:
+            - name: POSTGRES_DB
+              value: {{ .Values.postgres.user.database }}
+            - name: POSTGRES_USER
+              value: {{ .Values.postgres.user.username }}
+            - name: POSTGRES_PASSWORD
+              value: {{ .Values.postgres.user.password }}
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          resources:
+            {{- toYaml .Values.postgres.user.resources | nindent 12 }}
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - {{ .Values.postgres.user.username }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - {{ .Values.postgres.user.username }}
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+  {{- if .Values.postgres.user.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes:
+          - {{ .Values.postgres.user.persistence.accessMode }}
+        storageClassName: {{ .Values.global.storageClass }}
+        resources:
+          requests:
+            storage: {{ .Values.postgres.user.persistence.size }}
+  {{- else }}
+      volumes:
+        - name: postgres-data
+          emptyDir: {}
+  {{- end }}
+{{- end }}
+{{- end }}

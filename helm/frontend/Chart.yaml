@@ -1,0 +1,16 @@
+apiVersion: v2
+name: mybank-frontend
+description: MyBank Next.js Frontend Application
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords:
+  - frontend
+  - nextjs
+  - react
+  - web
+
+maintainers:
+  - name: MyBank Frontend Team
+    email: frontend@mybank.com

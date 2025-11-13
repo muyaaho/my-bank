@@ -1,0 +1,81 @@
+{{- if .Values.services.investmentService.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.services.investmentService.name }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: {{ .Values.services.investmentService.name }}
+    tier: backend
+    {{- include "services.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.services.investmentService.port }}
+      targetPort: {{ .Values.services.investmentService.port }}
+      protocol: TCP
+      name: http
+  selector:
+    app: {{ .Values.services.investmentService.name }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.services.investmentService.name }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: {{ .Values.services.investmentService.name }}
+    tier: backend
+    {{- include "services.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.services.investmentService.replicas | default .Values.common.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Values.services.investmentService.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.services.investmentService.name }}
+        tier: backend
+        version: {{ .Values.services.investmentService.image.tag }}
+      {{- if .Values.istio.enabled }}
+      annotations:
+        sidecar.istio.io/inject: "{{ .Values.istio.sidecarInjection }}"
+      {{- end }}
+    spec:
+      containers:
+        - name: {{ .Values.services.investmentService.name }}
+          image: "{{ .Values.services.investmentService.image.repository }}:{{ .Values.services.investmentService.image.tag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.services.investmentService.port }}
+              name: http
+          env:
+            {{- range $key, $value := .Values.services.investmentService.env }}
+            - name: {{ $key }}
+              value: {{ tpl $value $ | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.common.resources | nindent 12 }}
+          {{- if .Values.common.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: {{ .Values.services.investmentService.port }}
+            initialDelaySeconds: {{ .Values.common.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.common.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.common.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.common.livenessProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.common.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: {{ .Values.services.investmentService.port }}
+            initialDelaySeconds: {{ .Values.common.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.common.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.common.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.common.readinessProbe.failureThreshold }}
+          {{- end }}
+{{- end }}

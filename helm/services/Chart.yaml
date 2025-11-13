@@ -1,0 +1,16 @@
+apiVersion: v2
+name: mybank-services
+description: MyBank Microservices (API Gateway, Auth, User, PFM, Payment, Investment)
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords:
+  - microservices
+  - spring-boot
+  - fintech
+  - banking
+
+maintainers:
+  - name: MyBank Development Team
+    email: dev@mybank.com

@@ -17,6 +17,7 @@ spec:
         app: analytics-service
         tier: backend
       annotations:
+        sidecar.istio.io/inject: "false"
         prometheus.io/scrape: "true"
         prometheus.io/port: "8087"
         prometheus.io/path: "/actuator/prometheus"
@@ -28,20 +29,27 @@ spec:
         ports:
         - containerPort: 8087
           name: http
+        envFrom:
+        - configMapRef:
+            name: app-config
+        - secretRef:
+            name: common-secret
         env:
-        - name: MONGO_HOST
-          value: "mongodb"
-        - name: MONGO_USERNAME
-          value: "root"
-        - name: MONGO_PASSWORD
+        - name: SPRING_DATA_MONGODB_USERNAME
           valueFrom:
             secretKeyRef:
-              name: mongodb-secret
-              key: MONGO_INITDB_ROOT_PASSWORD
-        - name: KAFKA_BOOTSTRAP_SERVERS
-          value: "kafka:9092"
-        - name: EUREKA_URI
-          value: "http://service-discovery:8761/eureka"
+              name: common-secret
+              key: MONGODB_USERNAME
+        - name: SPRING_DATA_MONGODB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: common-secret
+              key: MONGODB_PASSWORD
+        - name: SPRING_DATA_MONGODB_AUTHENTICATION_DATABASE
+          valueFrom:
+            secretKeyRef:
+              name: common-secret
+              key: MONGODB_AUTH_DATABASE
         livenessProbe:
           httpGet:
             path: /actuator/health

@@ -1,0 +1,16 @@
+apiVersion: v2
+name: mybank-infrastructure
+description: MyBank Infrastructure Services (PostgreSQL, MongoDB, Redis, Kafka)
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords:
+  - infrastructure
+  - database
+  - cache
+  - message-queue
+
+maintainers:
+  - name: MyBank Platform Team
+    email: platform@mybank.com

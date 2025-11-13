@@ -1,0 +1,69 @@
+# Default values for mybank-frontend
+
+global:
+  namespace: mybank
+  imageRegistry: mybank
+  imagePullPolicy: IfNotPresent
+
+frontend:
+  enabled: true
+  name: frontend
+  replicas: 2
+  port: 3000
+
+  image:
+    repository: frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  # Environment variables for Next.js
+  env:
+    NODE_ENV: production
+    NEXT_PUBLIC_API_URL: "https://api.mybank.com"
+    NEXT_PUBLIC_APP_NAME: "MyBank"
+    NEXT_PUBLIC_APP_VERSION: "1.0.0"
+
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+  # Health checks
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: /
+      port: 3000
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    enabled: true
+    httpGet:
+      path: /
+      port: 3000
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: 3000
+    targetPort: 3000
+
+# Istio configuration
+istio:
+  enabled: true
+  sidecarInjection: true
+
+# NodePort for local access (optional)
+nodePort:
+  enabled: true
+  port: 30000

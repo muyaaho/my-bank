@@ -1,0 +1,160 @@
+# Default values for mybank-services
+# Override these values for different environments
+
+global:
+  namespace: mybank
+  imageRegistry: mybank
+  imagePullPolicy: IfNotPresent
+
+  # Environment
+  environment: development
+
+  # JWT Configuration
+  jwt:
+    secret: "mybank360-super-secret-key-for-jwt-token-generation-minimum-256-bits"
+    expiration: "86400000"  # 24 hours in milliseconds
+
+  # Database connection strings (reference infrastructure chart)
+  database:
+    postgresAuth:
+      host: postgres-auth
+      port: 5432
+      name: mybank_auth
+      username: mybank
+      password: mybank123
+
+    postgresUser:
+      host: postgres-user
+      port: 5433
+      name: mybank_user
+      username: mybank_user
+      password: mybank_user123
+
+    mongodb:
+      host: mongodb
+      port: 27017
+      username: mybank
+      password: mybank123
+      authDatabase: admin
+
+  # Redis
+  redis:
+    host: redis
+    port: 6379
+    password: ""
+
+  # Kafka
+  kafka:
+    bootstrapServers: kafka:9092
+
+# Common service defaults
+common:
+  replicas: 1
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 120
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 90
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+# Individual service configurations
+services:
+  apiGateway:
+    enabled: true
+    name: api-gateway
+    port: 8080
+    image:
+      repository: mybank/api-gateway
+      tag: latest
+    replicas: 2
+    env:
+      SERVER_PORT: "8080"
+      SPRING_PROFILES_ACTIVE: "kubernetes"
+      JWT_SECRET: "{{ .Values.global.jwt.secret }}"
+      JWT_EXPIRATION: "{{ .Values.global.jwt.expiration }}"
+      SPRING_DATA_REDIS_HOST: "{{ .Values.global.redis.host }}"
+      SPRING_DATA_REDIS_PORT: "{{ .Values.global.redis.port }}"
+
+  authService:
+    enabled: true
+    name: auth-service
+    port: 8081
+    image:
+      repository: mybank/auth-service
+      tag: latest
+    replicas: 2
+    env:
+      SERVER_PORT: "8081"
+      SPRING_PROFILES_ACTIVE: "kubernetes"
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://{{ .Values.global.database.postgresAuth.host }}:{{ .Values.global.database.postgresAuth.port }}/{{ .Values.global.database.postgresAuth.name }}"
+      SPRING_DATASOURCE_USERNAME: "{{ .Values.global.database.postgresAuth.username }}"
+      SPRING_DATASOURCE_PASSWORD: "{{ .Values.global.database.postgresAuth.password }}"
+      JWT_SECRET: "{{ .Values.global.jwt.secret }}"
+      JWT_EXPIRATION: "{{ .Values.global.jwt.expiration }}"
+      SPRING_DATA_REDIS_HOST: "{{ .Values.global.redis.host }}"
+      SPRING_DATA_REDIS_PORT: "{{ .Values.global.redis.port }}"
+
+  userService:
+    enabled: true
+    name: user-service
+    port: 8085
+    image:
+      repository: mybank/user-service
+      tag: latest
+    replicas: 2
+    env:
+      SERVER_PORT: "8085"
+      SPRING_PROFILES_ACTIVE: "kubernetes"
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://{{ .Values.global.database.postgresUser.host }}:{{ .Values.global.database.postgresUser.port }}/{{ .Values.global.database.postgresUser.name }}"
+      SPRING_DATASOURCE_USERNAME: "{{ .Values.global.database.postgresUser.username }}"
+      SPRING_DATASOURCE_PASSWORD: "{{ .Values.global.database.postgresUser.password }}"
+      SPRING_DATA_REDIS_HOST: "{{ .Values.global.redis.host }}"
+      SPRING_DATA_REDIS_PORT: "{{ .Values.global.redis.port }}"
+
+  paymentService:
+    enabled: true
+    name: payment-service
+    port: 8083
+    image:
+      repository: mybank/payment-service
+      tag: latest
+    replicas: 2
+    env:
+      SERVER_PORT: "8083"
+      SPRING_PROFILES_ACTIVE: "kubernetes"
+      SPRING_DATA_MONGODB_URI: "mongodb://{{ .Values.global.database.mongodb.username }}:{{ .Values.global.database.mongodb.password }}@{{ .Values.global.database.mongodb.host }}:{{ .Values.global.database.mongodb.port }}/mybank_payment?authSource={{ .Values.global.database.mongodb.authDatabase }}"
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: "{{ .Values.global.kafka.bootstrapServers }}"
+      SPRING_DATA_REDIS_HOST: "{{ .Values.global.redis.host }}"
+      SPRING_DATA_REDIS_PORT: "{{ .Values.global.redis.port }}"
+
+  investmentService:
+    enabled: true
+    name: investment-service
+    port: 8084
+    image:
+      repository: mybank/investment-service
+      tag: latest
+    replicas: 2
+    env:
+      SERVER_PORT: "8084"
+      SPRING_PROFILES_ACTIVE: "kubernetes"
+      SPRING_DATA_MONGODB_URI: "mongodb://{{ .Values.global.database.mongodb.username }}:{{ .Values.global.database.mongodb.password }}@{{ .Values.global.database.mongodb.host }}:{{ .Values.global.database.mongodb.port }}/mybank_investment?authSource={{ .Values.global.database.mongodb.authDatabase }}"
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: "{{ .Values.global.kafka.bootstrapServers }}"
+
+# Service Mesh (Istio)
+istio:
+  enabled: true
+  sidecarInjection: true

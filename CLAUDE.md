@@ -49,22 +49,30 @@ Example: When a payment of 3,450 KRW completes, `PaymentCompletedEvent` triggers
 ### Quick Start: Deploy to Kind
 
 ```bash
-# Full automated deployment (recommended after code changes)
-./scripts/deploy-complete-system.sh
+# 🚀 통합 배포 스크립트 (권장) - 모든 것을 한 번에 설치
+./deploy-mybank.sh
 
-# This script automatically:
-# 1. Creates/uses existing Kind cluster
-# 2. Builds all Docker images
-# 3. Loads images to Kind
-# 4. Installs Istio Service Mesh
-# 5. Generates TLS certificates
-# 6. Deploys all infrastructure (Kafka, PostgreSQL, MongoDB, Redis)
-# 7. Deploys all microservices
-# 8. Configures Istio Gateway and VirtualServices
+# 이 스크립트는 자동으로 다음을 수행합니다:
+# 1. Kind 클러스터 생성 (포트 매핑: 80, 443, 30000-30002)
+# 2. Gradle 빌드 및 Docker 이미지 빌드
+# 3. Kind로 이미지 로드
+# 4. /etc/hosts 도메인 자동 설정 (*.mybank.com)
+# 5. 자체 서명 TLS 인증서 생성 (CA + 와일드카드 인증서)
+# 6. Istio Service Mesh 설치 (버전 1.27.3)
+# 7. Kubernetes Namespace 생성 및 TLS 시크릿 적용
+# 8. 인프라 서비스 배포 (PostgreSQL, MongoDB, Redis, Kafka)
+# 9. 마이크로서비스 순차 배포 (Service Discovery → Gateway → 비즈니스 서비스)
+# 10. Istio Gateway 및 VirtualService 설정
 
-# Access after deployment:
-# - Frontend: https://app.mybank.com
+# 배포 후 접속:
+# - Frontend: https://app.mybank.com (또는 http://localhost:30000)
 # - API: https://api.mybank.com
+# - Eureka: https://eureka.mybank.com
+
+# 단계별 배포 (기존 방식)
+./scripts/generate-certs.sh          # 1. 인증서 생성
+./scripts/setup-hosts.sh             # 2. 도메인 설정
+./scripts/deploy-complete-system.sh  # 3. 시스템 배포
 ```
 
 ## Common Development Commands

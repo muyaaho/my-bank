@@ -1,0 +1,466 @@
+version: '3'
+
+# MyBank - Modern IaC Workflow
+# https://taskfile.dev
+
+vars:
+  CLUSTER_NAME: mybank-cluster
+  NAMESPACE: mybank
+  SCRIPTS_DIR: ./scripts
+
+includes:
+  k8s:
+    taskfile: ./Taskfile.k8s.yml
+    optional: true
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  # ============================================================================
+  # Phase 0: Pre-flight Checks
+  # ============================================================================
+
+  preflight:
+    desc: "Phase 0: Pre-flight checks (ports, resources, tools)"
+    cmds:
+      - "{{.SCRIPTS_DIR}}/00-preflight.sh"
+    silent: false
+
+  preflight:ports:
+    desc: Check if required ports are available
+    cmds:
+      - echo "Checking ports..."
+      - |
+        for port in 80 443 30000 30001 30002; do
+          if lsof -i :$port >/dev/null 2>&1; then
+            echo "❌ Port $port is in use"
+            lsof -i :$port | head -2
+            exit 1
+          else
+            echo "✓ Port $port is available"
+          fi
+        done
+    silent: false
+
+  preflight:tools:
+    desc: Check if required tools are installed
+    cmds:
+      - command -v docker || (echo "❌ Docker not installed" && exit 1)
+      - command -v kind || (echo "❌ Kind not installed" && exit 1)
+      - command -v kubectl || (echo "❌ kubectl not installed" && exit 1)
+      - command -v helm || (echo "❌ Helm not installed" && exit 1)
+      - echo "✓ All required tools are installed"
+    silent: false
+
+  preflight:docker:
+    desc: Check if Docker is running
+    cmds:
+      - docker info >/dev/null 2>&1 || (echo "❌ Docker is not running" && exit 1)
+      - echo "✓ Docker is running"
+    silent: false
+
+  # ============================================================================
+  # Phase 1: Cleanup
+  # ============================================================================
+
+  cleanup:
+    desc: "Phase 1: Clean up all resources (cluster, containers, images)"
+    cmds:
+      - "{{.SCRIPTS_DIR}}/01-cleanup.sh"
+    silent: false
+
+  cleanup:helm:
+    desc: Clean up Helm releases
+    cmds:
+      - |
+        if kubectl get namespace {{.NAMESPACE}} >/dev/null 2>&1; then
+          echo "Cleaning up Helm releases..."
+          helm uninstall mybank-frontend -n {{.NAMESPACE}} 2>/dev/null || true
+          helm uninstall mybank-services -n {{.NAMESPACE}} 2>/dev/null || true
+          helm uninstall mybank-infrastructure -n {{.NAMESPACE}} 2>/dev/null || true
+          echo "✓ Helm releases cleaned"
+        else
+          echo "Namespace {{.NAMESPACE}} does not exist, skipping Helm cleanup"
+        fi
+    silent: false
+
+  cleanup:cluster:
+    desc: Delete Kind cluster
+    deps:
+      - cleanup:helm
+    cmds:
+      - |
+        if kind get clusters 2>/dev/null | grep -q "^{{.CLUSTER_NAME}}$$"; then
+          echo "Deleting cluster {{.CLUSTER_NAME}}..."
+          kind delete cluster --name {{.CLUSTER_NAME}}
+          sleep 2
+          echo "✓ Cluster deleted"
+        else
+          echo "No cluster to delete"
+        fi
+      - |
+        # Force remove any remaining containers
+        echo "Cleaning up remaining containers..."
+        docker ps -aq --filter "label=io.x-k8s.kind.cluster={{.CLUSTER_NAME}}" | xargs -r docker rm -f 2>/dev/null || true
+        echo "✓ Containers cleaned"
+      - |
+        # Clean up kubectl context
+        kubectl config delete-context kind-{{.CLUSTER_NAME}} 2>/dev/null || true
+        kubectl config delete-cluster kind-{{.CLUSTER_NAME}} 2>/dev/null || true
+    silent: false
+
+  cleanup:docker:
+    desc: Clean up Docker resources
+    cmds:
+      - echo "Stopping conflicting containers..."
+      - docker ps -a --filter "publish=80" --filter "publish=443" -q | xargs -r docker stop
+      - docker ps -a --filter "publish=80" --filter "publish=443" -q | xargs -r docker rm
+      - echo "✓ Docker cleanup complete"
+    silent: false
+
+  cleanup:istio:
+    desc: Remove Istio directory
+    cmds:
+      - rm -rf istio-1.27.3
+      - echo "✓ Istio directory removed"
+    silent: false
+
+  cleanup:all:
+    desc: Full cleanup (cluster + docker + istio)
+    deps:
+      - cleanup:cluster
+      - cleanup:docker
+      - cleanup:istio
+
+  # ============================================================================
+  # Phase 2: Provision
+  # ============================================================================
+
+  provision:
+    desc: "Phase 2: Provision infrastructure (cluster, Istio, build images)"
+    cmds:
+      - "{{.SCRIPTS_DIR}}/02-provision.sh"
+    silent: false
+
+  provision:cluster:
+    desc: Create Kind cluster
+    cmds:
+      - |
+        if kind get clusters 2>/dev/null | grep -q "^{{.CLUSTER_NAME}}$$"; then
+          echo "⚠️  Cluster already exists, skipping creation"
+        else
+          kind create cluster --config kind-config.yaml --name {{.CLUSTER_NAME}}
+          kubectl cluster-info --context kind-{{.CLUSTER_NAME}}
+          kubectl wait --for=condition=Ready nodes --all --timeout=120s
+          echo "✓ Cluster created and ready"
+        fi
+    silent: false
+
+  provision:istio:
+    desc: Install Istio Service Mesh
+    cmds:
+      - |
+        if ! command -v istioctl >/dev/null 2>&1; then
+          echo "Downloading Istio..."
+          curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.27.3 sh -
+        fi
+      - |
+        if command -v istioctl >/dev/null 2>&1; then
+          istioctl install --set profile=default -y
+        else
+          ./istio-1.27.3/bin/istioctl install --set profile=default -y
+        fi
+      - kubectl wait --namespace istio-system --for=condition=ready pod --selector=app=istiod --timeout=300s
+      - echo "✓ Istio installed"
+    silent: false
+
+  provision:namespace:
+    desc: Create and label namespace
+    cmds:
+      - kubectl create namespace {{.NAMESPACE}} --dry-run=client -o yaml | kubectl apply -f -
+      - kubectl label namespace {{.NAMESPACE}} istio-injection=enabled --overwrite
+      - echo "✓ Namespace {{.NAMESPACE}} ready"
+    silent: false
+
+  provision:build:
+    desc: Build all Docker images
+    cmds:
+      - ./gradlew clean build -x test --no-daemon --parallel
+      - COMPOSE_PROFILES=build docker-compose build
+      - echo "✓ All images built"
+    silent: false
+
+  provision:load:
+    desc: Load images to Kind cluster
+    cmds:
+      - |
+        for image in api-gateway auth-service user-service analytics-service asset-service payment-service investment-service frontend; do
+          echo "Loading mybank/$image:latest..."
+          kind load docker-image mybank/$image:latest --name {{.CLUSTER_NAME}}
+        done
+      - echo "✓ All images loaded"
+    silent: false
+
+  provision:all:
+    desc: Full provisioning (cluster + Istio + namespace + build + load)
+    cmds:
+      - task: provision:cluster
+      - task: provision:istio
+      - task: provision:namespace
+      - task: provision:build
+      - task: provision:load
+
+  # ============================================================================
+  # Phase 3: Deploy
+  # ============================================================================
+
+  deploy:
+    desc: "Phase 3: Deploy applications (Helm charts)"
+    cmds:
+      - "{{.SCRIPTS_DIR}}/03-deploy.sh"
+    silent: false
+
+  deploy:infrastructure:
+    desc: Deploy infrastructure services (PostgreSQL, MongoDB, Redis, Kafka)
+    deps:
+      - provision:namespace
+    cmds:
+      - |
+        helm upgrade --install mybank-infrastructure helm/infrastructure \
+          --namespace {{.NAMESPACE}} \
+          --create-namespace \
+          --wait \
+          --timeout=10m
+      - echo "✓ Infrastructure deployed"
+    silent: false
+
+  deploy:services:
+    desc: Deploy backend services
+    deps:
+      - deploy:infrastructure
+    cmds:
+      - |
+        helm upgrade --install mybank-services helm/services \
+          --namespace {{.NAMESPACE}} \
+          --wait \
+          --timeout=10m
+      - echo "✓ Backend services deployed"
+    silent: false
+
+  deploy:frontend:
+    desc: Deploy frontend
+    deps:
+      - deploy:services
+    cmds:
+      - |
+        helm upgrade --install mybank-frontend helm/frontend \
+          --namespace {{.NAMESPACE}} \
+          --wait \
+          --timeout=10m
+      - echo "✓ Frontend deployed"
+    silent: false
+
+  deploy:all:
+    desc: Deploy all (infrastructure + services + frontend)
+    cmds:
+      - task: deploy:infrastructure
+      - task: deploy:services
+      - task: deploy:frontend
+
+  # ============================================================================
+  # Phase 4: Verify
+  # ============================================================================
+
+  verify:
+    desc: "Phase 4: Verify deployment (health checks, service tests)"
+    cmds:
+      - "{{.SCRIPTS_DIR}}/04-verify.sh"
+    silent: false
+
+  verify:pods:
+    desc: Check if all pods are running
+    cmds:
+      - |
+        echo "Checking pods in namespace {{.NAMESPACE}}..."
+        kubectl get pods -n {{.NAMESPACE}}
+
+        # Check if any pods are not Running
+        if kubectl get pods -n {{.NAMESPACE}} --field-selector=status.phase!=Running,status.phase!=Succeeded -o json | jq -e '.items | length > 0' >/dev/null 2>&1; then
+          echo "❌ Some pods are not running"
+          kubectl get pods -n {{.NAMESPACE}} --field-selector=status.phase!=Running,status.phase!=Succeeded
+          exit 1
+        fi
+
+        echo "✓ All pods are running"
+    silent: false
+
+  verify:services:
+    desc: Check if all services exist
+    cmds:
+      - |
+        echo "Checking services in namespace {{.NAMESPACE}}..."
+        kubectl get svc -n {{.NAMESPACE}}
+
+        expected_services=("postgres-auth" "mongodb" "redis" "kafka" "api-gateway" "auth-service" "frontend")
+
+        for svc in "${expected_services[@]}"; do
+          if kubectl get svc $svc -n {{.NAMESPACE}} >/dev/null 2>&1; then
+            echo "✓ Service $svc exists"
+          else
+            echo "❌ Service $svc not found"
+            exit 1
+          fi
+        done
+    silent: false
+
+  verify:health:
+    desc: Check service health endpoints
+    cmds:
+      - |
+        echo "Checking API Gateway health..."
+        kubectl port-forward svc/api-gateway -n {{.NAMESPACE}} 8080:8080 &
+        PF_PID=$!
+        sleep 5
+
+        if curl -s http://localhost:8080/actuator/health | grep -q "UP"; then
+          echo "✓ API Gateway is healthy"
+        else
+          echo "⚠️  API Gateway health check inconclusive"
+        fi
+
+        kill $PF_PID 2>/dev/null || true
+    silent: false
+
+  verify:all:
+    desc: Full verification (pods + services + health)
+    cmds:
+      - task: verify:pods
+      - task: verify:services
+      - task: verify:health
+
+  # ============================================================================
+  # Complete Workflows
+  # ============================================================================
+
+  up:
+    desc: "🚀 Complete setup: preflight → cleanup → provision → deploy → verify"
+    cmds:
+      - task: preflight
+      - task: cleanup:all
+      - task: provision:all
+      - task: deploy:all
+      - task: verify:all
+      - echo ""
+      - echo "✅ MyBank is up and running!"
+      - echo ""
+      - echo "Access URLs:"
+      - 'echo "  Frontend: https://app.mybank.com (or http://localhost:30000)"'
+      - 'echo "  API: https://api.mybank.com"'
+      - echo ""
+      - task: status
+
+  down:
+    desc: "🛑 Tear down everything"
+    cmds:
+      - task: cleanup:all
+      - echo "✅ MyBank has been torn down"
+
+  restart:
+    desc: "🔄 Restart: cleanup → provision → deploy"
+    cmds:
+      - task: cleanup:all
+      - task: provision:all
+      - task: deploy:all
+      - task: verify:all
+
+  redeploy:
+    desc: "♻️  Redeploy: rebuild images → reload → deploy"
+    cmds:
+      - task: provision:build
+      - task: provision:load
+      - kubectl rollout restart deployment -n {{.NAMESPACE}}
+      - kubectl rollout status deployment -n {{.NAMESPACE}}
+      - task: verify:all
+
+  # ============================================================================
+  # Utility Tasks
+  # ============================================================================
+
+  status:
+    desc: Show cluster status
+    cmds:
+      - echo ""
+      - echo "=== Cluster Status ==="
+      - kubectl get nodes
+      - echo ""
+      - echo "=== Pods ==="
+      - kubectl get pods -n {{.NAMESPACE}}
+      - echo ""
+      - echo "=== Services ==="
+      - kubectl get svc -n {{.NAMESPACE}}
+      - echo ""
+    silent: false
+
+  logs:
+    desc: "Show logs (usage: task logs -- POD_NAME)"
+    cmds:
+      - kubectl logs -n {{.NAMESPACE}} {{.CLI_ARGS}} --tail=100 -f
+
+  shell:
+    desc: "Open shell in pod (usage: task shell -- POD_NAME)"
+    cmds:
+      - kubectl exec -it -n {{.NAMESPACE}} {{.CLI_ARGS}} -- /bin/bash
+
+  port-forward:
+    desc: "Port forward to service (usage: task port-forward -- SERVICE LOCAL:REMOTE)"
+    cmds:
+      - kubectl port-forward -n {{.NAMESPACE}} svc/{{.CLI_ARGS}}
+
+  test:e2e:
+    desc: Run end-to-end tests
+    cmds:
+      - ./test-e2e.sh -y
+
+  # ============================================================================
+  # CI/CD Tasks
+  # ============================================================================
+
+  ci:
+    desc: "CI Pipeline: lint → build → test"
+    cmds:
+      - echo "Running CI pipeline..."
+      - helm lint helm/infrastructure
+      - helm lint helm/services
+      - helm lint helm/frontend
+      - ./gradlew clean build test --no-daemon
+      - echo "✓ CI pipeline passed"
+
+  help:
+    desc: Show detailed help
+    cmds:
+      - |
+        cat << 'EOF'
+        MyBank - Modern IaC Workflow (Task)
+
+        Quick Start:
+          task up          # Complete setup
+          task down        # Tear down
+          task status      # Check status
+
+        Workflow Phases:
+          task preflight   # Pre-flight checks
+          task cleanup     # Clean up resources
+          task provision   # Provision infrastructure
+          task deploy      # Deploy applications
+          task verify      # Verify deployment
+
+        Development:
+          task redeploy    # Rebuild and redeploy
+          task logs        # View logs
+          task shell       # Open shell
+
+        For full task list: task --list
+        EOF

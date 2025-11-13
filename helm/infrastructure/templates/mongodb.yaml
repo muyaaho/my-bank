@@ -1,0 +1,127 @@
+{{- if .Values.mongodb.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.mongodb.name }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: {{ .Values.mongodb.name }}
+    tier: infrastructure
+    {{- include "infrastructure.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.mongodb.port }}
+      targetPort: 27017
+      protocol: TCP
+      name: mongodb
+  selector:
+    app: {{ .Values.mongodb.name }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Values.mongodb.name }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: {{ .Values.mongodb.name }}
+    tier: infrastructure
+    {{- include "infrastructure.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ .Values.mongodb.name }}
+  replicas: {{ .Values.mongodb.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Values.mongodb.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.mongodb.name }}
+        tier: infrastructure
+    spec:
+      containers:
+        - name: mongodb
+          image: "{{ .Values.mongodb.image.repository }}:{{ .Values.mongodb.image.tag }}"
+          imagePullPolicy: {{ .Values.mongodb.image.pullPolicy }}
+          ports:
+            - containerPort: 27017
+              name: mongodb
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              value: {{ .Values.mongodb.rootUsername }}
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              value: {{ .Values.mongodb.rootPassword }}
+            - name: MONGO_INITDB_DATABASE
+              value: admin
+          resources:
+            {{- toYaml .Values.mongodb.resources | nindent 12 }}
+          volumeMounts:
+            - name: mongodb-data
+              mountPath: /data/db
+            - name: mongodb-init
+              mountPath: /docker-entrypoint-initdb.d
+          livenessProbe:
+            exec:
+              command:
+                - mongosh
+                - --eval
+                - "db.adminCommand('ping')"
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            exec:
+              command:
+                - mongosh
+                - --eval
+                - "db.adminCommand('ping')"
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+      volumes:
+        - name: mongodb-init
+          configMap:
+            name: mongodb-init-script
+  {{- if .Values.mongodb.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: mongodb-data
+      spec:
+        accessModes:
+          - {{ .Values.mongodb.persistence.accessMode }}
+        storageClassName: {{ .Values.global.storageClass }}
+        resources:
+          requests:
+            storage: {{ .Values.mongodb.persistence.size }}
+  {{- else }}
+      volumes:
+        - name: mongodb-data
+          emptyDir: {}
+  {{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mongodb-init-script
+  namespace: {{ .Values.global.namespace }}
+data:
+  init-mongo.js: |
+    // Create application user and databases
+    db = db.getSiblingDB('admin');
+    db.auth('{{ .Values.mongodb.rootUsername }}', '{{ .Values.mongodb.rootPassword }}');
+
+    {{- range .Values.mongodb.databases }}
+    db = db.getSiblingDB('{{ . }}');
+    db.createUser({
+      user: '{{ $.Values.mongodb.username }}',
+      pwd: '{{ $.Values.mongodb.password }}',
+      roles: [
+        { role: 'readWrite', db: '{{ . }}' },
+        { role: 'dbAdmin', db: '{{ . }}' }
+      ]
+    });
+    {{- end }}
+
+    print('MongoDB initialization completed');
+{{- end }}

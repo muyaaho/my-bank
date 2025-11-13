@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # PostgreSQL for auth-service
   postgres-auth:
@@ -125,6 +123,82 @@ services:
       - prometheus
     networks:
       - mybank-network
+
+  # ============================================================================
+  # Business Services (for building images only)
+  # ============================================================================
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    image: mybank/api-gateway:latest
+    profiles:
+      - build
+
+  # Auth Service
+  auth-service:
+    build:
+      context: .
+      dockerfile: auth-service/Dockerfile
+    image: mybank/auth-service:latest
+    profiles:
+      - build
+
+  # User Service
+  user-service:
+    build:
+      context: .
+      dockerfile: user-service/Dockerfile
+    image: mybank/user-service:latest
+    profiles:
+      - build
+
+  # Analytics Service
+  analytics-service:
+    build:
+      context: .
+      dockerfile: analytics-service/Dockerfile
+    image: mybank/analytics-service:latest
+    profiles:
+      - build
+
+  # Asset Service
+  asset-service:
+    build:
+      context: .
+      dockerfile: asset-service/Dockerfile
+    image: mybank/asset-service:latest
+    profiles:
+      - build
+
+  # Payment Service
+  payment-service:
+    build:
+      context: .
+      dockerfile: payment-service/Dockerfile
+    image: mybank/payment-service:latest
+    profiles:
+      - build
+
+  # Investment Service
+  investment-service:
+    build:
+      context: .
+      dockerfile: investment-service/Dockerfile
+    image: mybank/investment-service:latest
+    profiles:
+      - build
+
+  # Frontend
+  frontend:
+    build:
+      context: app
+      dockerfile: Dockerfile
+    image: mybank/frontend:latest
+    profiles:
+      - build
 
 volumes:
   postgres_auth_data:
